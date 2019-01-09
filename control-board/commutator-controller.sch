@@ -1567,7 +1567,7 @@ http://www.bccomponents.com/</description>
 </polygon>
 </package>
 <package name="SILENT-STEPPER-STICK-SMD">
-<text x="-1.016" y="-11.938" size="1.016" layer="26" font="vector" ratio="18">&gt;NAME</text>
+<text x="-1.016" y="-11.938" size="1.016" layer="25" font="vector" ratio="18">&gt;NAME</text>
 <text x="-1.016" y="10.668" size="1.016" layer="27" font="vector" ratio="18">&gt;VALUE</text>
 <smd name="2" x="1.37" y="6.35" dx="1.27" dy="3.4" layer="1" rot="R90"/>
 <smd name="1" x="-1.37" y="8.89" dx="1.27" dy="3.4" layer="1" rot="R90"/>
@@ -1745,8 +1745,11 @@ http://www.bccomponents.com/</description>
 <wire x1="-2.032" y1="-11.684" x2="21.082" y2="-11.684" width="0.254" layer="21"/>
 <wire x1="21.082" y1="-11.684" x2="21.082" y2="2.032" width="0.254" layer="21"/>
 <wire x1="21.082" y1="2.032" x2="-2.032" y2="2.032" width="0.254" layer="21"/>
-<text x="-1.8" y="2.3" size="1.016" layer="26" font="vector" ratio="18">&gt;NAME</text>
+<text x="-1.8" y="2.3" size="1.016" layer="25" font="vector" ratio="18">&gt;NAME</text>
 <text x="6.8" y="-5" size="1.016" layer="27" font="vector" ratio="18">&gt;VALUE</text>
+</package>
+<package name="TOUCH-1MM">
+<smd name="PAD" x="0" y="0" dx="1" dy="1" layer="1" roundness="100" stop="no" cream="no"/>
 </package>
 </packages>
 <symbols>
@@ -3175,6 +3178,14 @@ http://www.bccomponents.com/</description>
 <technology name=""/>
 </technologies>
 </device>
+<device name="_1MM" package="TOUCH-1MM">
+<connects>
+<connect gate="G$1" pin="1" pad="PAD"/>
+</connects>
+<technologies>
+<technology name=""/>
+</technologies>
+</device>
 </devices>
 </deviceset>
 <deviceset name="SPST_TACT" prefix="S" uservalue="yes">
@@ -3377,8 +3388,8 @@ http://www.bccomponents.com/</description>
 <part name="U$1" library="jonnew" deviceset="VCC" device=""/>
 <part name="U$2" library="jonnew" deviceset="VCC" device=""/>
 <part name="P+5" library="jonnew" deviceset="+5V" device=""/>
-<part name="C4" library="jonnew" deviceset="C-POL" device="_1210" value="1F"/>
-<part name="C10" library="jonnew" deviceset="C-POL" device="_1210" value="1F"/>
+<part name="C4" library="jonnew" deviceset="C-POL" device="_1210" value="3F"/>
+<part name="C10" library="jonnew" deviceset="C-POL" device="_1210" value="3F"/>
 <part name="SUPPLY2" library="jonnew" deviceset="GND" device=""/>
 <part name="SUPPLY3" library="jonnew" deviceset="GND" device=""/>
 <part name="C7" library="jonnew" deviceset="C" device="_0805" value="2.2uF"/>
@@ -3394,8 +3405,8 @@ http://www.bccomponents.com/</description>
 <part name="U$3" library="jonnew" deviceset="VCC" device=""/>
 <part name="U$5" library="jonnew" deviceset="VCC" device=""/>
 <part name="SUPPLY18" library="jonnew" deviceset="+3V3" device=""/>
-<part name="S1" library="jonnew" deviceset="TOUCH" device="_2X2CM"/>
-<part name="S2" library="jonnew" deviceset="TOUCH" device="_2X2CM"/>
+<part name="S1" library="jonnew" deviceset="TOUCH" device="_1MM"/>
+<part name="S2" library="jonnew" deviceset="TOUCH" device="_1MM"/>
 <part name="S3" library="jonnew" deviceset="SPST_TACT" device="_EVQP7"/>
 <part name="+5V1" library="jonnew" deviceset="TP" device="B2,54"/>
 <part name="U$8" library="jonnew" deviceset="VCC" device=""/>
@@ -3403,7 +3414,7 @@ http://www.bccomponents.com/</description>
 <part name="U4" library="jonnew" deviceset="SILENT-STEPPER-STICK-TMC2130" device="_SMD" value="TMC2130"/>
 <part name="SUPPLY7" library="jonnew" deviceset="GND" device=""/>
 <part name="C6" library="jonnew" deviceset="C-POL" device="_0807" value="100uF"/>
-<part name="C5" library="jonnew" deviceset="C-POL" device="_0807" value="100 uF"/>
+<part name="C5" library="jonnew" deviceset="C-POL" device="_0807" value="100uF"/>
 <part name="C2" library="jonnew" deviceset="C" device="_1206" value="22uF"/>
 <part name="C3" library="jonnew" deviceset="C" device="_1206" value="22uF"/>
 <part name="U1" library="jonnew" deviceset="VREG_ADJ" device="_R-PDSS-B4" value="PTN04050C"/>
