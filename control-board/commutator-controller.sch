@@ -3428,6 +3428,7 @@ http://www.bccomponents.com/</description>
 <part name="SUPPLY19" library="jonnew" deviceset="GND" device=""/>
 <part name="GND1" library="jonnew" deviceset="TP" device="B2,54"/>
 <part name="SUPPLY20" library="jonnew" deviceset="GND" device=""/>
+<part name="S4" library="jonnew" deviceset="TOUCH" device="_1MM"/>
 </parts>
 <sheets>
 <sheet>
@@ -3507,6 +3508,7 @@ http://www.bccomponents.com/</description>
 <instance part="SUPPLY19" gate="PE" x="388.62" y="116.84"/>
 <instance part="GND1" gate="G$1" x="381" y="127"/>
 <instance part="SUPPLY20" gate="PE" x="381" y="116.84"/>
+<instance part="S4" gate="G$1" x="73.66" y="109.22"/>
 </instances>
 <busses>
 </busses>
@@ -4102,9 +4104,9 @@ http://www.bccomponents.com/</description>
 <pinref part="U4" gate="G$1" pin="EN/CFG6"/>
 </segment>
 <segment>
-<wire x1="96.52" y1="109.22" x2="86.36" y2="109.22" width="0.1524" layer="91"/>
-<label x="86.36" y="109.22" size="1.27" layer="95" rot="R180" xref="yes"/>
-<pinref part="U5" gate="G$1" pin="17/A3/T/PWM"/>
+<wire x1="96.52" y1="127" x2="86.36" y2="127" width="0.1524" layer="91"/>
+<label x="86.36" y="127" size="1.27" layer="95" rot="R180" xref="yes"/>
+<pinref part="U5" gate="G$1" pin="10/TX2/CS0/PWM"/>
 </segment>
 </net>
 <net name="STEP" class="0">
@@ -4133,6 +4135,13 @@ http://www.bccomponents.com/</description>
 <wire x1="96.52" y1="142.24" x2="55.88" y2="142.24" width="0.1524" layer="91"/>
 <pinref part="S2" gate="G$1" pin="1"/>
 <label x="91.44" y="142.24" size="1.27" layer="95"/>
+</segment>
+</net>
+<net name="STOP" class="0">
+<segment>
+<pinref part="S4" gate="G$1" pin="1"/>
+<pinref part="U5" gate="G$1" pin="17/A3/T/PWM"/>
+<wire x1="78.74" y1="109.22" x2="96.52" y2="109.22" width="0.1524" layer="91"/>
 </segment>
 </net>
 </nets>
