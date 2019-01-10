@@ -1280,9 +1280,9 @@ http://www.bccomponents.com/</description>
 <text x="9.525" y="24.13" size="1.27" layer="21" font="vector" ratio="18" align="center-left">8</text>
 <text x="9.525" y="29.21" size="1.27" layer="21" font="vector" ratio="18" align="center-left">10</text>
 <text x="9.525" y="34.29" size="1.27" layer="21" font="vector" ratio="18" align="center-left">12</text>
-<text x="-2.54" y="29.845" size="1.27" layer="21" font="vector" ratio="18" rot="R90" align="center-right">Program</text>
+<text x="-2.54" y="32.385" size="1.27" layer="21" font="vector" ratio="18" rot="R90" align="center-right">Program</text>
 <text x="0" y="29.845" size="1.27" layer="21" font="vector" ratio="18" rot="R90" align="center-right">GND</text>
-<text x="2.54" y="29.845" size="1.27" layer="21" font="vector" ratio="18" rot="R90" align="center-right">3.3V</text>
+<text x="2.54" y="32.385" size="1.27" layer="21" font="vector" ratio="18" rot="R90" align="center-right">3.3V</text>
 <rectangle x1="-6.35" y1="33.02" x2="6.35" y2="35.56" layer="39"/>
 <smd name="14" x="-6.25" y="31.75" dx="1.27" dy="3.4" layer="1" rot="R270"/>
 <smd name="GND" x="-8.99" y="3.81" dx="1.27" dy="3.4" layer="1" rot="R270"/>
@@ -3429,6 +3429,7 @@ http://www.bccomponents.com/</description>
 <part name="GND1" library="jonnew" deviceset="TP" device="B2,54"/>
 <part name="SUPPLY20" library="jonnew" deviceset="GND" device=""/>
 <part name="S4" library="jonnew" deviceset="TOUCH" device="_1MM"/>
+<part name="S5" library="jonnew" deviceset="TOUCH" device="_1MM"/>
 </parts>
 <sheets>
 <sheet>
@@ -3509,6 +3510,7 @@ http://www.bccomponents.com/</description>
 <instance part="GND1" gate="G$1" x="381" y="127"/>
 <instance part="SUPPLY20" gate="PE" x="381" y="116.84"/>
 <instance part="S4" gate="G$1" x="73.66" y="109.22"/>
+<instance part="S5" gate="G$1" x="58.42" y="147.32"/>
 </instances>
 <busses>
 </busses>
@@ -3764,9 +3766,9 @@ http://www.bccomponents.com/</description>
 <junction x="398.78" y="251.46"/>
 </segment>
 <segment>
-<label x="88.9" y="144.78" size="1.27" layer="95" rot="R180" xref="yes"/>
-<wire x1="96.52" y1="144.78" x2="88.9" y2="144.78" width="0.1524" layer="91"/>
-<pinref part="U5" gate="G$1" pin="3/PWM"/>
+<label x="86.36" y="147.32" size="1.27" layer="95" rot="R180" xref="yes"/>
+<wire x1="96.52" y1="147.32" x2="86.36" y2="147.32" width="0.1524" layer="91"/>
+<pinref part="U5" gate="G$1" pin="2"/>
 </segment>
 </net>
 <net name="!IS31_SHDN" class="0">
@@ -3780,9 +3782,9 @@ http://www.bccomponents.com/</description>
 <pinref part="U3" gate="G$1" pin="!SHDN"/>
 </segment>
 <segment>
-<label x="88.9" y="147.32" size="1.27" layer="95" rot="R180" xref="yes"/>
-<wire x1="88.9" y1="147.32" x2="96.52" y2="147.32" width="0.1524" layer="91"/>
-<pinref part="U5" gate="G$1" pin="2"/>
+<label x="86.36" y="149.86" size="1.27" layer="95" rot="R180" xref="yes"/>
+<wire x1="86.36" y1="149.86" x2="96.52" y2="149.86" width="0.1524" layer="91"/>
+<pinref part="U5" gate="G$1" pin="1/TX1/T"/>
 </segment>
 </net>
 <net name="SCL" class="0">
@@ -3976,8 +3978,8 @@ http://www.bccomponents.com/</description>
 <junction x="33.02" y="238.76"/>
 </segment>
 <segment>
-<label x="83.82" y="101.6" size="1.27" layer="95" rot="R180" xref="yes"/>
-<wire x1="83.82" y1="101.6" x2="96.52" y2="101.6" width="0.1524" layer="91"/>
+<label x="86.36" y="101.6" size="1.27" layer="95" rot="R180" xref="yes"/>
+<wire x1="86.36" y1="101.6" x2="96.52" y2="101.6" width="0.1524" layer="91"/>
 <pinref part="U5" gate="G$1" pin="20/A6/SCK1/PWM"/>
 </segment>
 </net>
@@ -3992,8 +3994,8 @@ http://www.bccomponents.com/</description>
 <junction x="53.34" y="233.68"/>
 </segment>
 <segment>
-<label x="91.44" y="96.52" size="1.27" layer="95" rot="R180" xref="yes"/>
-<wire x1="96.52" y1="96.52" x2="91.44" y2="96.52" width="0.1524" layer="91"/>
+<label x="86.36" y="96.52" size="1.27" layer="95" rot="R180" xref="yes"/>
+<wire x1="96.52" y1="96.52" x2="86.36" y2="96.52" width="0.1524" layer="91"/>
 <pinref part="U5" gate="G$1" pin="22/A8/SCL1/T/PWM"/>
 </segment>
 </net>
@@ -4019,8 +4021,8 @@ http://www.bccomponents.com/</description>
 <label x="162.56" y="236.22" size="1.27" layer="95" xref="yes"/>
 </segment>
 <segment>
-<wire x1="96.52" y1="93.98" x2="83.82" y2="93.98" width="0.1524" layer="91"/>
-<label x="83.82" y="93.98" size="1.27" layer="95" rot="R180" xref="yes"/>
+<wire x1="96.52" y1="93.98" x2="86.36" y2="93.98" width="0.1524" layer="91"/>
+<label x="86.36" y="93.98" size="1.27" layer="95" rot="R180" xref="yes"/>
 <pinref part="U5" gate="G$1" pin="23/A9/SDA1/T/PWM"/>
 </segment>
 </net>
@@ -4035,8 +4037,8 @@ http://www.bccomponents.com/</description>
 <label x="111.76" y="228.6" size="1.27" layer="95" xref="yes"/>
 </segment>
 <segment>
-<wire x1="96.52" y1="99.06" x2="93.98" y2="99.06" width="0.1524" layer="91"/>
-<label x="93.98" y="99.06" size="1.27" layer="95" rot="R180" xref="yes"/>
+<wire x1="96.52" y1="99.06" x2="86.36" y2="99.06" width="0.1524" layer="91"/>
+<label x="86.36" y="99.06" size="1.27" layer="95" rot="R180" xref="yes"/>
 <pinref part="U5" gate="G$1" pin="21/A7"/>
 </segment>
 </net>
@@ -4044,7 +4046,7 @@ http://www.bccomponents.com/</description>
 <segment>
 <pinref part="S1" gate="G$1" pin="1"/>
 <wire x1="96.52" y1="152.4" x2="55.88" y2="152.4" width="0.1524" layer="91"/>
-<label x="91.44" y="152.4" size="1.27" layer="95"/>
+<label x="88.9" y="152.4" size="1.27" layer="95"/>
 <pinref part="U5" gate="G$1" pin="0/RX1/T"/>
 </segment>
 </net>
@@ -4134,7 +4136,7 @@ http://www.bccomponents.com/</description>
 <pinref part="U5" gate="G$1" pin="4/PWM"/>
 <wire x1="96.52" y1="142.24" x2="55.88" y2="142.24" width="0.1524" layer="91"/>
 <pinref part="S2" gate="G$1" pin="1"/>
-<label x="91.44" y="142.24" size="1.27" layer="95"/>
+<label x="88.9" y="142.24" size="1.27" layer="95"/>
 </segment>
 </net>
 <net name="STOP" class="0">
@@ -4142,6 +4144,16 @@ http://www.bccomponents.com/</description>
 <pinref part="S4" gate="G$1" pin="1"/>
 <pinref part="U5" gate="G$1" pin="17/A3/T/PWM"/>
 <wire x1="78.74" y1="109.22" x2="96.52" y2="109.22" width="0.1524" layer="91"/>
+</segment>
+</net>
+<net name="MODE" class="0">
+<segment>
+<pinref part="S5" gate="G$1" pin="1"/>
+<wire x1="63.5" y1="147.32" x2="66.04" y2="147.32" width="0.1524" layer="91"/>
+<wire x1="66.04" y1="147.32" x2="66.04" y2="144.78" width="0.1524" layer="91"/>
+<pinref part="U5" gate="G$1" pin="3/PWM"/>
+<wire x1="66.04" y1="144.78" x2="96.52" y2="144.78" width="0.1524" layer="91"/>
+<label x="88.9" y="144.78" size="1.27" layer="95"/>
 </segment>
 </net>
 </nets>

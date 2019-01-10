@@ -10,9 +10,16 @@ This board is used to control the commutator's stepper motor.
 ### Usage
 
 #### Buttons
-The front of the board has two large capacitive buttons. These allow manual
-control over the motors rotation in the direction printed on each button. These
-inputs override any other form of motor control.
+The front panel has four buttons. 
+
+- Stop/Go: toggle commutator operation. When in the *stop* state, the LED will
+  turn red and all motor output will halt. Pressing directional buttons in the
+  stopped state will not work. When in the *go* state, the LED will turn green
+  and the motor can be turned. 
+- Directional buttons (2x): Manual control over the motors rotation in the
+  direction indicated on each button when the commutator is the *go* state.
+  These inputs override any other form of motor control.
+- Mode Button: Pressing the LED toggles the operation mode.
 
 #### Remote Control Interface
 TODO
