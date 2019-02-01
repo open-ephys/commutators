@@ -1,5 +1,11 @@
-// This script is used to control the open ephys commutator. It is very shitty. It was
-// written by JPN while mildly drunk.
+/*
+ * ----------------------------------------------------------------------------
+ * "THE BEER-WARE LICENSE" (Revision 42):
+ * JPN wrote this file. As long as you retain this notice you
+ * can do whatever you want with this stuff. If we meet some day, and you think
+ * this stuff is worth it, you can buy me a beer in return.
+ * ----------------------------------------------------------------------------
+ */
 
 #include <EEPROM.h>
 #include <StepControl.h>
@@ -454,14 +460,14 @@ void poll_mode()
 
         // If touched and fresh, toggle operation mode
         switch (ctx.mode) {
-            
+
             case manual :
                   ctx.mode = remote;
                   break;
             case remote :
                   ctx.mode = both;
                   break;
-            case both : 
+            case both :
                   ctx.mode = manual;
                   break;
         }

@@ -26,16 +26,16 @@ This board is used to control the commutator's stepper motor.
 ### LED
 The LED tells you about the commutator state
 
-    1. Flashing red: commutator is charging internal super-capacitors.  All
-       controls and motor operation are locked Wait until this completes.
-    1. Solid red: commutator is disabled. Motor is turned off and will not
-       turn or respond to button  presses or external commands.
-    1. Blue: commutator is enabled and permits both remote (RPC) and manual
-       (button) turn control. Buttons take preceidence over remote commands.
-    1. Green: commutator is enabled and permits remote turn control. Turn
-       buttons are inactive. Stop/Go and LED buttons remain active.
-    1. Pink: commutator is enabled permits manual control only. The device will
-       not respond to remote turn commands.
+1. Flashing red: commutator is charging internal super-capacitors.  All
+   controls and motor operation are locked Wait until this completes.
+1. Solid red: commutator is disabled. Motor is turned off and will not
+   turn or respond to button  presses or external commands.
+1. Blue: commutator is enabled and permits both remote (RPC) and manual
+   (button) turn control. Buttons take preceidence over remote commands.
+1. Green: commutator is enabled and permits remote turn control. Turn
+   buttons are inactive. Stop/Go and LED buttons remain active.
+1. Pink: commutator is enabled permits manual control only. The device will
+   not respond to remote turn commands.
 
 The LED can be turned off by pressing and holding it > 500 msec. It can be
 turned back on by pressing it.
@@ -107,7 +107,7 @@ they are changed. The device will start in the same state it was last used.
 ## Firmware
 Firmware is located [here](../firmware).
 
-### Construction
+## Construction
 
 ### Bill of Materials
 The BOM is located [here](https://docs.google.com/spreadsheets/d/1M2R0Q2-OuRHzctt05BxtA3hxNcCHtRZHORzCKElmG1Q/edit?usp=sharing).
@@ -137,3 +137,16 @@ as follows:
 
 This is a 4-layer circuit board with very high-tolerance design rules (min
 trace space: 6 mil. 0.3 mm min hole size)
+
+## Hardware License
+Copyright Jakob Voigts & Jonathan P. Newman 2019.
+
+This documentation describes Open Hardware and is licensed under the
+CERN OHL v.1.2.
+
+You may redistribute and modify this documentation under the terms of the CERN
+OHL v.1.2. (http://ohwr.org/cernohl). This documentation is distributed WITHOUT
+ANY EXPRESS OR IMPLIED WARRANTY, INCLUDING OF MERCHANTABILITY, SATISFACTORY
+QUALITY AND FITNESS FOR A PARTICULAR PURPOSE. Please see the CERN OHL v.1.2 for
+applicable conditions
+
