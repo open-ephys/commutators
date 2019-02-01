@@ -6,6 +6,7 @@
 #include <i2c_t3.h>
 #include <SPI.h>
 #include <ArduinoJson.h>
+#include <math.h>
 
 // Button read parameters
 #define HOLD_MSEC           300
@@ -64,7 +65,7 @@
 #define SETTINGS_ADDR_START 0
 
 // Operation modes
-enum Mode { manual, automatic };
+enum Mode { manual, both, remote };
 
 // Controller state
 struct Context {
@@ -128,7 +129,7 @@ void calibrate_touch(TouchSensor *sensor, int msec)
     sensor->calib_val = (int)(val / k);
 }
 
-void check_touch(TouchSensor *sensor)
+void check_touch(TouchSensor *sensor, int hold_msec = HOLD_MSEC)
 {
     // TODO: update and use sensor->last_state to prevent glitching
 
@@ -140,7 +141,7 @@ void check_touch(TouchSensor *sensor)
 
     // Check the pad for a min of TOUCH_MSEC and a max of HOLD_MSEC to get
     // consensus on fingy presence
-    while ((fingy && global_millis <= HOLD_MSEC)
+    while ((fingy && global_millis <= hold_msec)
            || global_millis < TOUCH_MSEC) {
         fingy = ((touchRead(sensor->pin) - sensor->calib_val) > CAP_DELTA);
         consecutive += fingy ? 1 : 0;
@@ -150,7 +151,7 @@ void check_touch(TouchSensor *sensor)
     // Do we deserve an update?
     auto consensus = consecutive > k * 0.9;
 
-    if (global_millis >= HOLD_MSEC && consensus) {
+    if (global_millis >= hold_msec && consensus) {
         sensor->fresh = sensor->result != held;
         sensor->result = held;
         return;
@@ -233,6 +234,8 @@ void save_settings()
     EEPROM.put(addr += sizeof(Context), ctx);
 }
 
+// Motor target update. We integrate turns in the target position and apply to
+// motor's motion.
 int turn_motor(float turns)
 {
     // Make sure driver is enabled
@@ -241,8 +244,18 @@ int turn_motor(float turns)
     target_turns += turns;
     motor_ctrl.stopAsync();
 
-    motor.setTargetAbs((long)(target_turns * (float)USTEPS_PER_REV));
+    motor.setTargetAbs(lroundf(target_turns * (float)USTEPS_PER_REV));
     motor_ctrl.moveAsync(motor);
+}
+
+// Emergency motor stop/reset
+void hard_stop() {
+
+    motor_ctrl.emergencyStop();
+    motor.setPosition(0);
+    target_turns = 0;
+
+    digitalWriteFast(MOT_CFG6_EN, HIGH);
 }
 
 void set_rgb_color(byte r, byte g, byte b)
@@ -275,11 +288,14 @@ void update_rgb()
     }
 
     switch (ctx.mode) {
-        case manual:
+        case manual: // Pink
             set_rgb_color(80, 0, 40);
             break;
-        case automatic:
-            set_rgb_color(1, 30, 10);
+        case remote: // Green
+            set_rgb_color(1, 20, 7);
+            break;
+        case both: // Blue
+            set_rgb_color(5, 5, 60);
             break;
     }
 }
@@ -413,7 +429,8 @@ void setup_power()
 
 void update_motor_speed()
 {
-    auto max_speed = (float)USTEPS_PER_REV * MOT_BASE_RPM * ctx.speed_scale / 60.0;
+    // * 2 is because this is a 2x reduction gear
+    auto max_speed = (float)USTEPS_PER_REV * MOT_BASE_RPM * 2 * ctx.speed_scale / 60.0;
     motor.setMaxSpeed(max_speed);
     motor.setAcceleration(max_speed * 5);
 }
@@ -421,35 +438,54 @@ void update_motor_speed()
 void poll_mode()
 {
     // Poll the mode button
-    check_touch(&touch_mode);
+    check_touch(&touch_mode, 500);
 
-    if (touch_mode.result == held && touch_mode.fresh) {
+    if (touch_mode.result == held && touch_mode.fresh && ctx.led_on) {
         // If held and fresh, toggle LED
-        ctx.led_on = !ctx.led_on;
+        ctx.led_on = false;
+        save_required = true;
+
+    } else if (touch_mode.result == touched && touch_mode.fresh && !ctx.led_on) {
+        // If LED is off and touched and fresh, toggle LED
+        ctx.led_on = true;
         save_required = true;
 
     } else if (touch_mode.result == touched && touch_mode.fresh) {
+
         // If touched and fresh, toggle operation mode
-        ctx.mode = ctx.mode == manual ? automatic : manual;
+        switch (ctx.mode) {
+            
+            case manual :
+                  ctx.mode = remote;
+                  break;
+            case remote :
+                  ctx.mode = both;
+                  break;
+            case both : 
+                  ctx.mode = manual;
+                  break;
+        }
+
         save_required = true;
     }
 }
 
 void poll_turns()
 {
-    // If the commutator is not enabled, then these buttons can't do anything
-    if (!ctx.commutator_en)
+    // If the commutator is not enabled, or under pure remote control, then
+    // these buttons can't do anything
+    if (!ctx.commutator_en || ctx.mode == remote)
         return;
 
     // Poll the cw button
-    check_touch(&touch_cw);
+    check_touch(&touch_cw, 100);
     if (touch_cw.result == held) {
 
         // Make sure driver is enabled
         digitalWriteFast(MOT_CFG6_EN, LOW);
 
         motor_ctrl.emergencyStop();
-        motor.setTargetRel(1e6);
+        motor.setTargetRel(10e6);
         motor_ctrl.moveAsync(motor);
 
         while (touch_cw.result == held)
@@ -467,14 +503,14 @@ void poll_turns()
     }
 
     // Poll the ccw button
-    check_touch(&touch_ccw);
+    check_touch(&touch_ccw, 100);
     if (touch_ccw.result == held) {
 
         // Make sure driver is enabled
         digitalWriteFast(MOT_CFG6_EN, LOW);
 
         motor_ctrl.emergencyStop();
-        motor.setTargetRel(-1e6);
+        motor.setTargetRel(-10e6);
         motor_ctrl.moveAsync(motor);
 
         while (touch_ccw.result == held)
@@ -494,18 +530,26 @@ void poll_turns()
 
 void poll_stop_go()
 {
-    check_touch(&touch_stopgo);
-    if (touch_stopgo.result && touch_stopgo.fresh) {
+    check_touch(&touch_stopgo, 500);
 
-        ctx.commutator_en = !ctx.commutator_en;
+    if (touch_stopgo.result && touch_stopgo.fresh
+        && ctx.commutator_en) { // Touch or hold can turn off the motor
+        ctx.commutator_en = false;
         save_required = true;
 
-        // Disable the motor
-        if (!ctx.commutator_en)
-            digitalWriteFast(MOT_CFG6_EN, HIGH);
+        // Hard disable/reset on motor
+        hard_stop();
+
+    } else if (touch_stopgo.result == held && touch_stopgo.fresh
+        && !ctx.commutator_en) { // Long hold required turn on the motor after disable
+
+        ctx.commutator_en = true;
+        save_required = true;
+
+        // Driver renable will be taken care of by turn_motor()
     }
-    // Renable will be taken care of by turn_motor()
 }
+
 
 void setup()
 {
@@ -547,6 +591,8 @@ void loop()
 
             if (root.containsKey("enable")) {
                 ctx.commutator_en = root["enable"].as<bool>();
+                if (!ctx.commutator_en)
+                    hard_stop();
                 save_required = true;
             }
 
@@ -556,18 +602,29 @@ void loop()
                 save_required = true;
             }
 
-            if (root.containsKey("led_on")) {
-                ctx.led_on = root["led_on"].as<bool>();
+            if (root.containsKey("led")) {
+                ctx.led_on = root["led"].as<bool>();
                 save_required = true;
             }
 
             if (root.containsKey("mode")) {
-                ctx.mode = root["mode"].as<int>() == 0 ? manual : automatic;
+
+                switch (root["mode"].as<int>()) {
+                    case 0:
+                        ctx.mode = remote;
+                        break;
+                    case 1:
+                        ctx.mode = both;
+                        break;
+                    case 2:
+                        ctx.mode = manual;
+                        break;
+                }
                 save_required = true;
             }
 
-            if (root.containsKey("turn") && ctx.mode == automatic && ctx.commutator_en)
-                turn_motor(root["turn"].as<float>());
+            if (root.containsKey("turn") && ctx.mode != manual && ctx.commutator_en)
+                turn_motor(2 * root["turn"].as<float>());
         }
     }
 
