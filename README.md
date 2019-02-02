@@ -103,7 +103,7 @@ interface, are saved in non-volatile memory each time they are changed. The
 device will start in the same state it was last used.
 
 ## Firmware
-The controller firmware is located [here](../firmware). It runs on a
+The controller firmware is located [here](./firmware/). It runs on a
 [Teensy 3.2](https://www.pjrc.com/store/teensy32.html). To compile 
 this firmware and program the microcontroller, you need the following 
 dependencies:
@@ -113,9 +113,7 @@ dependencies:
 - [TeensyStep](https://github.com/luni64/TeensyStep)
 - [Arduino JSON](https://arduinojson.org/)
 
-The firmware is located
-[here](https://github.com/jonnew/twister3/tree/master/firmware/twister3). The
-firmware can be uploaded to the device using the [Arduino
+The firmware can be uploaded to the device using the [Arduino
 IDE](https://www.arduino.cc/en/Main/Software). _Note that you will need to add
 the [Teensyduino add-on](https://www.pjrc.com/teensy/teensyduino.html) to to
 the Arduino IDE to program the Teensy_.When installing Teensyduino, you should
@@ -136,7 +134,7 @@ The mechanical component of the commutator are as follows:
 1. Housing (3D-printed)
 1. Some fasterners
 
-Mechanical designs are located [here](./mechanical). STL files 
+Mechanical designs are located [here](./mechanical/). STL files 
 for 3D printing are located in the `stl` subdirectory.
 
 Links to purchase each of these components, including 3D-printed parts, can be 
@@ -156,7 +154,7 @@ The board used to control the commutator consists of the following elements:
 1. Capacitive touch sensors on the back side of the PCB that serve as buttons
    for manual commutator control
 
-Board designs are located [here](../control-board). Board design file types are
+Board designs are located [here](./control-board/). Board design file types are
 as follows:
 
 - `*.sch`: EAGLE schematic file
@@ -182,7 +180,6 @@ TODO: Pictures of assembly
 
 ## Hardware License
 Copyright Jakob Voigts & Jonathan P. Newman 2019.
-5
 This documentation describes Open Hardware and is licensed under the
 CERN OHL v.1.2.
 
