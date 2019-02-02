@@ -3,8 +3,8 @@ The wide-spread availability of 6 degree of freedom pose tracking using
 internal-measurement units (IMUs) allows continuous monitoring of an animal's
 rotational state in an environment. This obviates the need for tether torque
 measurements to drive an active commutator since the drift-free rotational
-state of the animal is known in real-time, and the commutator can simply be
-told to follow along. This permits the use of extremely thin [coaxial
+state of the animal is known in real-time, and the commutator can simply
+follow along. This permits the use of extremely thin [coaxial
 tethers](http://www.axon-cable.com/en/02_products/06_coaxial-cables/02/index.aspx)
 that cannot function with a standard active commutator because they are too
 flexible to translate rotational torque.
