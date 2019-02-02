@@ -3,8 +3,8 @@ The wide-spread availability of 6 degree of freedom pose tracking using
 internal-measurement units (IMUs) allows continuous monitoring of an animal's
 rotational state in an environment. This obviates the need for tether torque
 measurements to drive an active commutator since the drift-free rotational
-state of the animal is known in real-time, and the commutator can simply be
-told to follow along. This permits the use of extremely thin [coaxial
+state of the animal is known in real-time, and the commutator can simply
+follow along. This permits the use of extremely thin [coaxial
 tethers](http://www.axon-cable.com/en/02_products/06_coaxial-cables/02/index.aspx)
 that cannot function with a standard active commutator because they are too
 flexible to translate rotational torque.
@@ -25,13 +25,13 @@ The LED tells you about the commutator state
 1. Flashing red: commutator is charging internal super-capacitors.  All
    controls and motor operation are locked Wait until this completes.
 1. Solid red: commutator is disabled. Motor is turned off and will not
-   turn or respond to button  presses or external commands.
-1. Blue: commutator is enabled and permits both remote (RPC) and manual
-   (button) turn control. Buttons take preceidence over remote commands.
-1. Green: commutator is enabled and permits remote turn control. Turn
-   buttons are inactive. Stop/Go and LED buttons remain active.
+   turn or respond to button presses or external commands.
 1. Pink: commutator is enabled permits manual control only. The device will
    not respond to remote turn commands.
+1. Green: commutator is enabled and permits remote turn control. Turn
+   buttons are inactive. Stop/Go and LED buttons remain active.
+1. Blue: commutator is enabled and permits both remote (RPC) and manual
+   (button) turn control. Buttons take precedence over remote commands.
 
 The LED can be turned off by pressing and holding it > 500 msec. It can be
 turned back on by pressing it.
@@ -47,20 +47,20 @@ The front panel has four buttons.
       old target position. In this state, pressing and holding the Stop/Go
       button for > 0.5 second, or sending the approriate RPC will enable the
       device.
-    - *Enabled* (LED is green or pink): When in the *enabled* state, the LED
-      will be green or pink depending on operation mode and the motor can be
-      turned via button presses or RPCs depending on the operation mode (see
-      Mode Button). In this state, pressing the Stop/Go button will instantly
-      disable the device.
+    - *Enabled* (LED is blue, green, or pink): When in the *enabled* state, the
+      LED will be blue, green, or pink and the motor can be turned via button
+      presses or RPCs depending on the operation mode (see Mode Button). In
+      this state, pressing the Stop/Go button will instantly disable the
+      device.
 
-- __Directional buttons (2x)__: Manual control over the motors rotation in the
-  direction indicated on each button when the commutator is *enabled*.  These
-  inputs override any other form of motor control. When pressed, all target
-  turns provided via RPC will be cleared, such that releasing them will not
-  result in the commutator re-engaging an old target position.
+- __Directional__ (2x): Manually control the motor rotation in the
+  direction indicated on each button when the commutator is *Enabled* and in
+  *Manual* or *Remote/Manual* mode. These inputs override remote motor control.
+  When pressed, all target turns provided via remote control will be cleared,
+  such that releasing them will not result in the commutator re-engaging an old
+  target position.
 
-- __Mode Button__: Pressing the LED toggles the operation mode (remote/manual or
-  manual-only).
+- __Mode__: pressing the LED toggles the operation mode.
   - *Manual* (LED is pink): commutator is enabled and responds to manual,
     button-based turn control only
   - *Remote* (LED is green): commutator is enabled and responds to remote,
@@ -116,7 +116,8 @@ The firmware is located
 firmware can be uploaded to the device using the [Arduino
 IDE](https://www.arduino.cc/en/Main/Software). _Note that you will need to add
 the [Teensyduino add-on](https://www.pjrc.com/teensy/teensyduino.html) to to
-the Arduino IDE to program the Teensy_.When installing Teensyduino, you should opt install all of the bundled libraries as well.
+the Arduino IDE to program the Teensy_.When installing Teensyduino, you should
+opt install all of the bundled libraries as well.
 
 ## Construction
 
