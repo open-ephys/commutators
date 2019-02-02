@@ -38,7 +38,6 @@
 #define MOT_CFG3_CS         8
 #define MOT_CFG6_EN         10
 #define MOT_CFG6_EN         10
-#define MOT_BASE_RPM        100.0
 
 // Power options
 #define MOT_POW_EN          22
@@ -78,7 +77,7 @@ struct Context {
     Mode mode = manual;
     bool led_on = true;
     bool commutator_en = false;
-    float speed_scale = 1.0;
+    float speed_rpm = 50;
 };
 
 // Holds the current state
@@ -99,7 +98,8 @@ elapsedMillis global_millis;
 // TODO: use somehow
 volatile bool power_failure = false;
 
-// I was touched..., by the power..., in broooooooooooad daylight
+// I was touched..., by the power..., on my unit..., in broooooooooooad
+// daylight
 enum TouchState { untouched, touched, held };
 
 struct TouchSensor {
@@ -120,7 +120,7 @@ TouchSensor touch_ccw;
 TouchSensor touch_mode;
 TouchSensor touch_stopgo;
 
-void calibrate_touch(TouchSensor *sensor, int msec)
+void calibrate_touch(TouchSensor *sensor, unsigned int msec)
 {
     global_millis = 0;
 
@@ -135,7 +135,7 @@ void calibrate_touch(TouchSensor *sensor, int msec)
     sensor->calib_val = (int)(val / k);
 }
 
-void check_touch(TouchSensor *sensor, int hold_msec = HOLD_MSEC)
+void check_touch(TouchSensor *sensor, unsigned int hold_msec = HOLD_MSEC)
 {
     // TODO: update and use sensor->last_state to prevent glitching
 
@@ -242,7 +242,7 @@ void save_settings()
 
 // Motor target update. We integrate turns in the target position and apply to
 // motor's motion.
-int turn_motor(float turns)
+void turn_motor(float turns)
 {
     // Make sure driver is enabled
     digitalWriteFast(MOT_CFG6_EN, LOW);
@@ -436,7 +436,7 @@ void setup_power()
 void update_motor_speed()
 {
     // * 2 is because this is a 2x reduction gear
-    auto max_speed = (float)USTEPS_PER_REV * MOT_BASE_RPM * 2 * ctx.speed_scale / 60.0;
+    auto max_speed = (float)USTEPS_PER_REV * 2 * ctx.speed_rpm / 60.0;
     motor.setMaxSpeed(max_speed);
     motor.setAcceleration(max_speed * 5);
 }
@@ -556,7 +556,6 @@ void poll_stop_go()
     }
 }
 
-
 void setup()
 {
     Serial.begin(9600);
@@ -603,7 +602,15 @@ void loop()
             }
 
             if (root.containsKey("speed")) {
-                ctx.speed_scale = root["speed"].as<float>();
+
+                auto rpm = root["speed"].as<float>();
+
+                // Bound speed
+                if (rpm > 0 && rpm <= 500)
+                    ctx.speed_rpm = rpm;
+                else if (rpm > 500)
+                    ctx.speed_rpm = 500;
+
                 update_motor_speed();
                 save_required = true;
             }
@@ -617,13 +624,13 @@ void loop()
 
                 switch (root["mode"].as<int>()) {
                     case 0:
-                        ctx.mode = remote;
+                        ctx.mode = manual;
                         break;
                     case 1:
-                        ctx.mode = both;
+                        ctx.mode = remote;
                         break;
                     case 2:
-                        ctx.mode = manual;
+                        ctx.mode = both;
                         break;
                 }
                 save_required = true;
