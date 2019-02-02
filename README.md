@@ -23,7 +23,8 @@ rotational state.
 The LED tells you about the commutator state
 
 1. Flashing red: commutator is charging internal super-capacitors.  All
-   controls and motor operation are locked Wait until this completes.
+   controls and motor operation are locked. Wait until this process 
+   completes to use the device.
 1. Solid red: commutator is disabled. Motor is turned off and will not
    turn or respond to button presses or external commands.
 1. Pink: commutator is enabled permits manual control only. The device will
@@ -102,14 +103,15 @@ interface, are saved in non-volatile memory each time they are changed. The
 device will start in the same state it was last used.
 
 ## Firmware
-Firmware is located [here](../firmware). The controller firmware runs on a
-[Teensy 3.2](https://www.pjrc.com/store/teensy32.html). To program the teensy
-you will need the following Arduino dependencies:
+The controller firmware is located [here](../firmware). It runs on a
+[Teensy 3.2](https://www.pjrc.com/store/teensy32.html). To compile 
+this firmware and program the microcontroller, you need the following 
+dependencies:
 
+- [Arduino IDE](https://www.arduino.cc/en/Main/Software)
+- [Teensyduino add-on](https://www.pjrc.com/teensy/td_download.html)
 - [TeensyStep](https://github.com/luni64/TeensyStep)
 - [Arduino JSON](https://arduinojson.org/)
-- [Teensyduino add-on](https://www.pjrc.com/teensy/td_download.html)
-- [Arduino IDE](https://www.arduino.cc/en/Main/Software)
 
 The firmware is located
 [here](https://github.com/jonnew/twister3/tree/master/firmware/twister3). The
@@ -117,7 +119,8 @@ firmware can be uploaded to the device using the [Arduino
 IDE](https://www.arduino.cc/en/Main/Software). _Note that you will need to add
 the [Teensyduino add-on](https://www.pjrc.com/teensy/teensyduino.html) to to
 the Arduino IDE to program the Teensy_.When installing Teensyduino, you should
-opt install all of the bundled libraries as well.
+opt to install all of the bundled libraries as well. This takes care of installing
+`i2c_t3.h` and `SPI.h` rather than having to install them manually.
 
 ## Construction
 
@@ -125,28 +128,32 @@ opt install all of the bundled libraries as well.
 The BOM is located [here](https://docs.google.com/spreadsheets/d/1M2R0Q2-OuRHzctt05BxtA3hxNcCHtRZHORzCKElmG1Q/edit?usp=sharing).
 
 ### Mechanical
-The mechanical components, excluding fasteners, of the commutator are as
-follows:
+The mechanical component of the commutator are as follows:
 
 1. RF Rotary Joint
 1. 2x reduction gears (3D-printed)
 1. NEMA-11 Stepper Motor
 1. Housing (3D-printed)
+1. Some fasterners
 
-Links to purchase each of these components can be found on the BOM.
+Mechanical designs are located [here](./mechanical). STL files 
+for 3D printing are located in the `stl` subdirectory.
+
+Links to purchase each of these components, including 3D-printed parts, can be 
+found on the BOM.
 
 ### Electronics
 The board used to control the commutator consists of the following elements:
 
 1. [Teensy 3.2](https://www.pjrc.com/store/teensy32.html) for receiving
    commands and controlling all circuit elements.
-2. [TMC2130 Silent Stepper
+1. [TMC2130 Silent Stepper
    Stick](https://www.watterott.com/en/SilentStepStick-TMC2130) for driving the
    motor.
-3. Super-capacitor charge system and step-up regulator for providing
+1. Super-capacitor charge system and step-up regulator for providing
    high-current capacity drive to the motor driver directly from USB.
-4. RGB indicator LED.
-5. Capacitive touch sensors on the back side of the PCB that serve as buttons
+1. RGB indicator LED.
+1. Capacitive touch sensors on the back side of the PCB that serve as buttons
    for manual commutator control
 
 Board designs are located [here](../control-board). Board design file types are
@@ -175,7 +182,7 @@ TODO: Pictures of assembly
 
 ## Hardware License
 Copyright Jakob Voigts & Jonathan P. Newman 2019.
-
+5
 This documentation describes Open Hardware and is licensed under the
 CERN OHL v.1.2.
 
