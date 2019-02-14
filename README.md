@@ -84,16 +84,16 @@ be sent:
 // Example multi-command. Any combo can be used.
 // In this case:
 // 1. Allow remote control
-// 2. Scale speed to 25 RPM
+// 2. Set speed to 25 RPM
 // 3. Excecute 1.1 turns CC
 // Ordering of commands does not matter
-{mode: 1, speed: 0.5, turn : -1.1}
+{mode: 1, speed: 25, turn : -1.1}
 ```
 
 So, to enable remote control mode, set the speed to 100 RPM, and turn the motor
 2 times CW we would send the following string to the device's serial port:
 ```
-{mode: 1, speed: 2, turn : 2.0}
+{mode: 1, speed: 100, turn : 2.0}
 ```
 
 ### Saving settings
