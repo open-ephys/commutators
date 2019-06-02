@@ -8,7 +8,7 @@
  */
 
 #include <EEPROM.h>
-#include <StepControl.h>
+#include <AccelStepper.h>
 #include <i2c_t3.h>
 #include <SPI.h>
 #include <ArduinoJson.h>
@@ -20,14 +20,15 @@
 
 // Stepper parameters
 #define DETENTS             200
-#define USTEPS_PER_REV      (DETENTS * 64)
+#define USTEPS_PER_STEP     16
+#define USTEPS_PER_REV      (DETENTS * USTEPS_PER_STEP)
 
 // Capacitive touch buttons
 #define CAP_TURN_CW         0
 #define CAP_MODE_SEL        1
 #define CAP_TURN_CCW        15
 #define CAP_STOP_GO         17
-#define CAP_DELTA           300 // delta capacitance required
+#define CAP_DELTA           200 // delta capacitance required
 
 // Stepper driver pins
 #define MOT_DIR             14
@@ -35,9 +36,8 @@
 #define MOT_CFG0_MISO       12
 #define MOT_CFG1_MOSI       11
 #define MOT_CFG2_SCLK       13
-#define MOT_CFG3_CS         8
-#define MOT_CFG6_EN         10
-#define MOT_CFG6_EN         10
+#define MOT_CFG3_CS         8 //10 // 8
+#define MOT_CFG6_EN         10 // 9 //10
 
 // Power options
 #define MOT_POW_EN          22
@@ -69,15 +69,12 @@
 // Settings address start byte
 #define SETTINGS_ADDR_START 0
 
-// Operation modes
-enum Mode { manual, both, remote };
-
 // Controller state
 struct Context {
-    Mode mode = manual;
     bool led_on = true;
     bool commutator_en = false;
-    float speed_rpm = 50;
+    float speed_rpm = 100;
+    float accel_rpmm = 400;
 };
 
 // Holds the current state
@@ -87,12 +84,15 @@ Context ctx;
 bool save_required = false;
 
 // Stepper motor
-Stepper motor(MOT_STEP, MOT_DIR);
-StepControl<> motor_ctrl; // Use default settings
-float target_turns = 0;
+AccelStepper motor(AccelStepper::DRIVER, MOT_STEP, MOT_DIR);
+//StepControl<> motor_ctrl; // Use default settings
+double target_turns = 0;
 
 // Global timer
 elapsedMillis global_millis;
+
+// Motor update timer
+IntervalTimer mot_timer;
 
 // Triggered in case of under current from host
 // TODO: use somehow
@@ -137,8 +137,6 @@ void calibrate_touch(TouchSensor *sensor, unsigned int msec)
 
 void check_touch(TouchSensor *sensor, unsigned int hold_msec = HOLD_MSEC)
 {
-    // TODO: update and use sensor->last_state to prevent glitching
-
     global_millis = 0;
     bool fingy = true;
     int consecutive = 0;
@@ -236,32 +234,26 @@ void save_settings()
 {
     int addr = SETTINGS_ADDR_START;
     EEPROM.put(addr, 0x12); // good settings flag
-
     EEPROM.put(addr += sizeof(Context), ctx);
 }
 
 // Motor target update. We integrate turns in the target position and apply to
 // motor's motion.
-void turn_motor(float turns)
+void turn_motor(double turns)
 {
-    // Make sure driver is enabled
-    digitalWriteFast(MOT_CFG6_EN, LOW);
-
+    // Relative move
     target_turns += turns;
-    motor_ctrl.stopAsync();
-
-    motor.setTargetAbs(lroundf(target_turns * (float)USTEPS_PER_REV));
-    motor_ctrl.moveAsync(motor);
+    motor.moveTo(lround(target_turns * (double)USTEPS_PER_REV));
 }
 
 // Emergency motor stop/reset
 void hard_stop() {
-
-    motor_ctrl.emergencyStop();
-    motor.setPosition(0);
-    target_turns = 0;
-
-    digitalWriteFast(MOT_CFG6_EN, HIGH);
+    motor.setAcceleration(1e6);
+    motor.stop();
+    motor.runToPosition();
+    motor.setCurrentPosition(0);
+    target_turns = 0.0;
+    update_motor_accel();
 }
 
 void set_rgb_color(byte r, byte g, byte b)
@@ -293,17 +285,7 @@ void update_rgb()
         return;
     }
 
-    switch (ctx.mode) {
-        case manual: // Pink
-            set_rgb_color(80, 0, 40);
-            break;
-        case remote: // Green
-            set_rgb_color(1, 20, 7);
-            break;
-        case both: // Blue
-            set_rgb_color(5, 5, 60);
-            break;
-    }
+    set_rgb_color(1, 20, 7);
 }
 
 void setup_cap_touch()
@@ -349,7 +331,7 @@ void setup_motor()
 
     // set pins
     pinMode(MOT_CFG6_EN, OUTPUT);
-    digitalWriteFast(MOT_CFG6_EN, HIGH); // deactivate driver (LOW active)
+    digitalWriteFast(MOT_CFG6_EN, LOW); // activate driver (LOW active)
     pinMode(MOT_DIR, OUTPUT);
     digitalWriteFast(MOT_DIR, LOW); // LOW or HIGH
     pinMode(MOT_STEP, OUTPUT);
@@ -376,27 +358,55 @@ void setup_motor()
     // IHOLD=0x10, IRUN=0x10
     tmc_write(WRITE_FLAG | REG_IHOLD_IRUN, 0x00001010UL);
 
-    // tmc_write(WRITE_FLAG | REG_CHOPCONF,
-    // 0x00008008UL); // native 256 microsteps, MRES=0, TBL=1=24, TOFF=8
-    // tmc_write(WRITE_FLAG|REG_CHOPCONF,   0x01008008UL); //128 microsteps,
-    // MRES=0, TBL=1=24, TOFF=8
-    tmc_write(WRITE_FLAG | REG_CHOPCONF, 0x02008008UL); // 64 microsteps,
-    // MRES=0, TBL=1=24, TOFF=8
-    // tmc_write(WRITE_FLAG|REG_CHOPCONF,   0x03008008UL); // 32 microsteps,
-    // MRES=0, TBL=1=24, TOFF=8
-    // tmc_write(WRITE_FLAG|REG_CHOPCONF,   0x04008008UL); // 16 microsteps,
-    // MRES=0, TBL=1=24, TOFF=8
-    // tmc_write(WRITE_FLAG|REG_CHOPCONF,   0x05008008UL); //  8 microsteps,
-    // MRES=0, TBL=1=24, TOFF=8
-    // tmc_write(WRITE_FLAG|REG_CHOPCONF,   0x06008008UL); //  4 microsteps,
-    // MRES=0, TBL=1=24, TOFF=8
-    // tmc_write(WRITE_FLAG|REG_CHOPCONF,   0x07008008UL); //  2 microsteps,
-    // MRES=0, TBL=1=24, TOFF=8
-    // tmc_write(WRITE_FLAG|REG_CHOPCONF,   0x08008008UL); //  1 microsteps,
-    // MRES=0, TBL=1=24, TOFF=8
+    switch (USTEPS_PER_STEP) {
+        case 1:
+            tmc_write(WRITE_FLAG|REG_CHOPCONF,   0x08008008ul); //  1 microsteps,
+            break;
+        case 2:
+            tmc_write(WRITE_FLAG|REG_CHOPCONF,   0x07008008UL); //  2 microsteps,
+            break;
+        case 4:
+            tmc_write(WRITE_FLAG|REG_CHOPCONF,   0x06008008UL); //  4 microsteps,
+            break;
+        case 8:
+            tmc_write(WRITE_FLAG|REG_CHOPCONF,   0x05008008UL); //  8 microsteps,
+            break;
+        case 16:
+            tmc_write(WRITE_FLAG|REG_CHOPCONF,   0x04008008UL); // 16 microsteps,
+            break;
+        case 32:
+            tmc_write(WRITE_FLAG|REG_CHOPCONF,   0x03008008UL); // 32 microsteps,
+            break;
+        case 64:
+            tmc_write(WRITE_FLAG | REG_CHOPCONF, 0x02008008UL); // 64 microsteps,
+            break;
+        case 128:
+            tmc_write(WRITE_FLAG|REG_CHOPCONF,   0x01008008UL); //128 microsteps,
+            break;
+        default:
+            tmc_write(WRITE_FLAG|REG_CHOPCONF,   0x08008008ul); //  1 microsteps,
+            break;
+    }
 
     // Setup motor driver
     update_motor_speed();
+    update_motor_accel();
+
+    // Minimum pulse width
+    motor.setMinPulseWidth(3);
+
+    // Setup run() timer
+    mot_timer.begin(run_motor_isr, 10);
+}
+
+void run_motor_isr()
+{
+    if (motor.distanceToGo() != 0) {
+        motor.run();
+    } else {
+        target_turns = 0.0; // Take opportunity to reset motor position to 0
+        motor.setCurrentPosition(0);
+    }
 }
 
 void power_fail_isr()
@@ -413,6 +423,7 @@ void setup_power()
     attachInterrupt(nPOW_FAIL, power_fail_isr, FALLING);
 
     // Turn on breathing mode
+    set_rgb_color(255, 0, 0);
     Wire.beginTransmission(IS31_ADDR);
     Wire.write(0x02);
     Wire.write(0x20); // Turn on breathing mode
@@ -422,10 +433,6 @@ void setup_power()
     while (analogRead(CHARGE_CURR) > CHARGE_CURR_THRESH) {
         // Nothing
     }
-
-    // We wanna see it blink at least a couple times, even if supercaps don't
-    // leak :)
-    delay(1000);
 
     Wire.beginTransmission(IS31_ADDR);
     Wire.write(0x02);
@@ -438,40 +445,28 @@ void update_motor_speed()
     // * 2 is because this is a 2x reduction gear
     auto max_speed = (float)USTEPS_PER_REV * 2 * ctx.speed_rpm / 60.0;
     motor.setMaxSpeed(max_speed);
-    motor.setAcceleration(max_speed * 5);
 }
 
-void poll_mode()
+void update_motor_accel()
+{
+    // * 2 is because this is a 2x reduction gear
+    auto a = (float)USTEPS_PER_REV * 2 * ctx.accel_rpmm / 60.0;
+    motor.setAcceleration(a);
+}
+
+void poll_led()
 {
     // Poll the mode button
-    check_touch(&touch_mode, 500);
+    check_touch(&touch_mode, 100);
 
     if (touch_mode.result == held && touch_mode.fresh && ctx.led_on) {
         // If held and fresh, toggle LED
         ctx.led_on = false;
         save_required = true;
 
-    } else if (touch_mode.result == touched && touch_mode.fresh && !ctx.led_on) {
+    } else if (touch_mode.result == held && touch_mode.fresh && !ctx.led_on) {
         // If LED is off and touched and fresh, toggle LED
         ctx.led_on = true;
-        save_required = true;
-
-    } else if (touch_mode.result == touched && touch_mode.fresh) {
-
-        // If touched and fresh, toggle operation mode
-        switch (ctx.mode) {
-
-            case manual :
-                  ctx.mode = remote;
-                  break;
-            case remote :
-                  ctx.mode = both;
-                  break;
-            case both :
-                  ctx.mode = manual;
-                  break;
-        }
-
         save_required = true;
     }
 }
@@ -480,30 +475,25 @@ void poll_turns()
 {
     // If the commutator is not enabled, or under pure remote control, then
     // these buttons can't do anything
-    if (!ctx.commutator_en || ctx.mode == remote)
+    if (!ctx.commutator_en)
         return;
 
     // Poll the cw button
     check_touch(&touch_cw, 100);
     if (touch_cw.result == held) {
 
-        // Make sure driver is enabled
-        digitalWriteFast(MOT_CFG6_EN, LOW);
+        // If the motor is turning, stop it
+        hard_stop();
 
-        motor_ctrl.emergencyStop();
-        motor.setTargetRel(10e6);
-        motor_ctrl.moveAsync(motor);
+        // Set huge target
+        motor.move(10e6);
 
         while (touch_cw.result == held)
             check_touch(&touch_cw);
 
         // Set all targets to 0 because we are overriding
-        motor_ctrl.emergencyStop();
-        motor.setPosition(0);
-        target_turns = 0;
-
-        // Disable driver
-        digitalWriteFast(MOT_CFG6_EN, HIGH);
+        // and Disable driver
+        hard_stop();
 
         return;
     }
@@ -512,23 +502,18 @@ void poll_turns()
     check_touch(&touch_ccw, 100);
     if (touch_ccw.result == held) {
 
-        // Make sure driver is enabled
-        digitalWriteFast(MOT_CFG6_EN, LOW);
+        // If the motor is turning, stop it
+        hard_stop();
 
-        motor_ctrl.emergencyStop();
-        motor.setTargetRel(-10e6);
-        motor_ctrl.moveAsync(motor);
+        // Set huge targetr
+        motor.move(-10e6);
 
         while (touch_ccw.result == held)
             check_touch(&touch_ccw);
 
         // Set all targets to 0 because we are overriding
-        motor_ctrl.emergencyStop();
-        motor.setPosition(0);
-        target_turns = 0;
-
-        // Disable driver
-        digitalWriteFast(MOT_CFG6_EN, HIGH);
+        // and Disable driver
+        hard_stop();
 
         return;
     }
@@ -536,7 +521,10 @@ void poll_turns()
 
 void poll_stop_go()
 {
-    check_touch(&touch_stopgo, 500);
+    check_touch(&touch_stopgo, 100);
+
+    Serial.print("Button state: ");
+    Serial.println(touch_stopgo.result);
 
     if (touch_stopgo.result && touch_stopgo.fresh
         && ctx.commutator_en) { // Touch or hold can turn off the motor
@@ -551,8 +539,6 @@ void poll_stop_go()
 
         ctx.commutator_en = true;
         save_required = true;
-
-        // Driver renable will be taken care of by turn_motor()
     }
 }
 
@@ -566,13 +552,13 @@ void setup()
     touch_mode.pin = CAP_MODE_SEL;
     touch_stopgo.pin = CAP_STOP_GO;
 
+    // Load parameters from last use
+    load_settings();
+
     setup_rgb(); // Must come first, used by all that follow
     setup_power();
     setup_cap_touch();
     setup_motor();
-
-    // Load parameters from last use
-    load_settings();
 }
 
 void loop()
@@ -581,7 +567,7 @@ void loop()
     poll_stop_go();
 
     // Poll the mode button and update on change
-    poll_mode();
+    poll_led();
 
     // Poll manual turn buttons
     poll_turns();
@@ -606,12 +592,26 @@ void loop()
                 auto rpm = root["speed"].as<float>();
 
                 // Bound speed
-                if (rpm > 0 && rpm <= 500)
+                if (rpm > 0 && rpm <= 1000)
                     ctx.speed_rpm = rpm;
-                else if (rpm > 500)
-                    ctx.speed_rpm = 500;
+                else if (rpm > 1000)
+                    ctx.speed_rpm = 1000;
 
                 update_motor_speed();
+                save_required = true;
+            }
+
+            if (root.containsKey("accel")) {
+
+                auto rpmm = root["accel"].as<float>();
+
+                // Bound speed
+                if (rpmm > 0 && rpmm <= 1000)
+                    ctx.accel_rpmm = rpmm;
+                else if (rpmm > 1000)
+                    ctx.accel_rpmm = 1000;
+
+                update_motor_accel();
                 save_required = true;
             }
 
@@ -620,33 +620,14 @@ void loop()
                 save_required = true;
             }
 
-            if (root.containsKey("mode")) {
-
-                switch (root["mode"].as<int>()) {
-                    case 0:
-                        ctx.mode = manual;
-                        break;
-                    case 1:
-                        ctx.mode = remote;
-                        break;
-                    case 2:
-                        ctx.mode = both;
-                        break;
-                }
-                save_required = true;
+            if (root.containsKey("turn") && ctx.commutator_en) {
+                turn_motor(2 * root["turn"].as<double>()); // 2 * for reduction gear
             }
-
-            if (root.containsKey("turn") && ctx.mode != manual && ctx.commutator_en)
-                turn_motor(2 * root["turn"].as<float>());
         }
     }
 
     // Update rgb
     update_rgb();
-
-    // If we are not using the motor, shut it down
-    if (!motor_ctrl.isRunning())
-        digitalWriteFast(MOT_CFG6_EN, HIGH);
 
     if (save_required) {
        save_settings();
