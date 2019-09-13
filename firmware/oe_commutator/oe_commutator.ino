@@ -28,7 +28,7 @@
 #define CAP_MODE_SEL        1
 #define CAP_TURN_CCW        15
 #define CAP_STOP_GO         17
-#define CAP_DELTA           200 // delta capacitance required
+#define CAP_DELTA           100 // delta capacitance required
 
 // Stepper driver pins
 #define MOT_DIR             14
@@ -36,8 +36,8 @@
 #define MOT_CFG0_MISO       12
 #define MOT_CFG1_MOSI       11
 #define MOT_CFG2_SCLK       13
-#define MOT_CFG3_CS         8 //10 // 8
-#define MOT_CFG6_EN         10 // 9 //10
+#define MOT_CFG3_CS         10
+#define MOT_CFG6_EN         9
 
 // Power options
 #define MOT_POW_EN          22
@@ -85,13 +85,13 @@ bool save_required = false;
 
 // Stepper motor
 AccelStepper motor(AccelStepper::DRIVER, MOT_STEP, MOT_DIR);
-//StepControl<> motor_ctrl; // Use default settings
 double target_turns = 0;
 
 // Global timer
 elapsedMillis global_millis;
 
 // Motor update timer
+volatile int motor_settled_cnt = 0;
 IntervalTimer mot_timer;
 
 // Triggered in case of under current from host
@@ -290,6 +290,11 @@ void update_rgb()
 
 void setup_cap_touch()
 {
+    touch_cw.pin = CAP_TURN_CW;
+    touch_ccw.pin = CAP_TURN_CCW;
+    touch_mode.pin = CAP_MODE_SEL;
+    touch_stopgo.pin = CAP_STOP_GO;
+
     calibrate_touch(&touch_cw, 10);
     calibrate_touch(&touch_ccw, 10);
     calibrate_touch(&touch_mode, 10);
@@ -325,13 +330,9 @@ void setup_rgb()
 
 void setup_motor()
 {
-    // Turn on the motor power
-    pinMode(MOT_POW_EN, OUTPUT);
-    digitalWriteFast(MOT_POW_EN, HIGH);
-
     // set pins
     pinMode(MOT_CFG6_EN, OUTPUT);
-    digitalWriteFast(MOT_CFG6_EN, LOW); // activate driver (LOW active)
+    digitalWriteFast(MOT_CFG6_EN, HIGH); // Inactivate driver (LOW active)
     pinMode(MOT_DIR, OUTPUT);
     digitalWriteFast(MOT_DIR, LOW); // LOW or HIGH
     pinMode(MOT_STEP, OUTPUT);
@@ -360,7 +361,7 @@ void setup_motor()
 
     switch (USTEPS_PER_STEP) {
         case 1:
-            tmc_write(WRITE_FLAG|REG_CHOPCONF,   0x08008008ul); //  1 microsteps,
+            tmc_write(WRITE_FLAG|REG_CHOPCONF,   0x08008008UL); //  1 microsteps,
             break;
         case 2:
             tmc_write(WRITE_FLAG|REG_CHOPCONF,   0x07008008UL); //  2 microsteps,
@@ -402,11 +403,18 @@ void setup_motor()
 void run_motor_isr()
 {
     if (motor.distanceToGo() != 0) {
+        //enable motor
+        digitalWriteFast(MOT_CFG6_EN, LOW);
         motor.run();
+        motor_settled_cnt = 0;
     } else {
+        motor_settled_cnt++;
         target_turns = 0.0; // Take opportunity to reset motor position to 0
         motor.setCurrentPosition(0);
     }
+
+    if (motor_settled_cnt == 50e3)
+        digitalWriteFast(MOT_CFG6_EN, HIGH);
 }
 
 void power_fail_isr()
@@ -416,12 +424,6 @@ void power_fail_isr()
 
 void setup_power()
 {
-    pinMode(VMID_SEL, OUTPUT);
-    digitalWriteFast(VMID_SEL, HIGH); // 2.7V across each super cap
-
-    pinMode(nPOW_FAIL, INPUT);
-    attachInterrupt(nPOW_FAIL, power_fail_isr, FALLING);
-
     // Turn on breathing mode
     set_rgb_color(255, 0, 0);
     Wire.beginTransmission(IS31_ADDR);
@@ -429,14 +431,24 @@ void setup_power()
     Wire.write(0x20); // Turn on breathing mode
     Wire.endTransmission();
 
+    // Turn on the motor power
+    pinMode(MOT_POW_EN, OUTPUT);
+    digitalWriteFast(MOT_POW_EN, HIGH);
+    delay(100);
+
+    pinMode(VMID_SEL, OUTPUT);
+    digitalWriteFast(VMID_SEL, HIGH); // 2.7V across each super cap
+
+    pinMode(nPOW_FAIL, INPUT);
+    attachInterrupt(nPOW_FAIL, power_fail_isr, FALLING);
+
     // Wait for charge current stabilize and breath LED in meantime
-    while (analogRead(CHARGE_CURR) > CHARGE_CURR_THRESH) {
-        // Nothing
-    }
+    while (analogRead(CHARGE_CURR) >= CHARGE_CURR_THRESH)
+        delay(10);
 
     Wire.beginTransmission(IS31_ADDR);
     Wire.write(0x02);
-    Wire.write(0x00); // Turn on breathing mode
+    Wire.write(0x00); // Turn off breathing mode
     Wire.endTransmission();
 }
 
@@ -458,6 +470,8 @@ void poll_led()
 {
     // Poll the mode button
     check_touch(&touch_mode, 100);
+
+    // NB: see note at declaration
 
     if (touch_mode.result == held && touch_mode.fresh && ctx.led_on) {
         // If held and fresh, toggle LED
@@ -493,7 +507,9 @@ void poll_turns()
 
         // Set all targets to 0 because we are overriding
         // and Disable driver
-        hard_stop();
+        hard_stop    // NB: see note at declaration
+
+();
 
         return;
     }
@@ -523,9 +539,6 @@ void poll_stop_go()
 {
     check_touch(&touch_stopgo, 100);
 
-    Serial.print("Button state: ");
-    Serial.println(touch_stopgo.result);
-
     if (touch_stopgo.result && touch_stopgo.fresh
         && ctx.commutator_en) { // Touch or hold can turn off the motor
         ctx.commutator_en = false;
@@ -546,15 +559,10 @@ void setup()
 {
     Serial.begin(9600);
 
-    // NB: see note at declaration
-    touch_cw.pin = CAP_TURN_CW;
-    touch_ccw.pin = CAP_TURN_CCW;
-    touch_mode.pin = CAP_MODE_SEL;
-    touch_stopgo.pin = CAP_STOP_GO;
-
     // Load parameters from last use
     load_settings();
 
+    // Setup each block of the board
     setup_rgb(); // Must come first, used by all that follow
     setup_power();
     setup_cap_touch();
