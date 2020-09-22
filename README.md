@@ -26,11 +26,11 @@ rotational measurements are taken.
 - High bandwidth link up to 18 GHz
 - Optical table & 80/20 rail mountable
 - Remote control using JSON-encoded commands
-- Manual control 
+- Manual control using capacitive sense buttons
 - Indication LED
     - Can be completely turned off
 - Advanced stepper driver (TMC2130)
-    - Voltage-controlled for silent operation 
+    - Voltage-controlled for silent operation
     - Precise motion using step interpolation (256 uSteps/step)
 - USB powered and controlled
     - Internal super-capacitor circuitry prevents loading the USB bus during
@@ -68,47 +68,37 @@ The front panel has four buttons.
       state, pressing the Stop/Go button will instantly disable the device.
 
 - __Directional__ (2x): Manually control the motor rotation in the
-  direction indicated on each button when the commutator is *Enabled* and in
-  *Manual* or *Remote/Manual* mode. These inputs override remote motor control.
-  When pressed, all target turns provided via remote control will be cleared,
-  such that releasing them will not result in the commutator re-engaging an old
-  target position.
+  direction indicated on each button when the commutator is *Enabled*. These
+  inputs take precedence over and override ongoing remote motor control.  When
+  pressed, all target turns provided via remote control will be cleared, such
+  that releasing them will not result in the commutator re-engaging an old
+  target position. Remote commands sent when a button is being pressed are
+  ignored.
 
-- __LED__: pessing and holding the the LED turns it off. Pressing it again turns it back on.
-    - *Manual* (LED is pink): commutator is enabled and responds to manual,
-      button-based turn control only
-    - *Remote* (LED is green): commutator is enabled and responds to remote,
-      RPC-based turn control only
-    - *Remote/Manual* (LED is blue): commutator is enabled and responds to both
-      remote and manual turn control. Manual control takes presidence over
-      remote and will clear all remote targeting state.
+- __LED__: pressing the LED turns it off (e.g for cases where it presents an
+  unwanted visual stimulus). Pressing it again turns it back on.
 
 ### Remote control interface
-When in *Remote* or *Remote/Manual* mode, the commutator accepts JSON-encoded
+When manual buttons are not being pressed, the commutator accepts JSON-encoded
 commands over its serial interface. Here are examples of all commands that can
 be sent:
 ```
 {enable : true}     // Enable commutator (default = false)
 {led : false}       // Turn off RGB LED (default = true)
-{mode : 1}          // 0 = manual, 1 = remote, 2 = remote & manaul (default = manual)
 {speed : 250}       // Set turn speed to 250 RPM (default = 50 RPM, valid ∈ (0, 500] RPM)
 {turn : 1.1}        // 1.1 turns CW
 {turn : -1.1}       // 1.1 turns CCW
 
 // Example multi-command. Any combo can be used.
 // In this case:
-// 1. Allow remote control
-// 2. Set speed to 25 RPM
-// 3. Excecute 1.1 turns CC
+// 1. Turn LED off
+// 1. Set speed to 25 RPM
+// 2. Excecute 1.1 turns CC
 // Ordering of commands does not matter
-{mode: 1, speed: 25, turn : -1.1}
+{led: false, speed: 25, turn : -1.1}
 ```
-
-So, to enable remote control mode, set the speed to 100 RPM, and turn the motor
-2 times CW we would send the following string to the device's serial port:
-```
-{mode: 1, speed: 100, turn : 2.0}
-```
+The communator state can be read using the `{print:}` command  which will
+return a JSON object containing control and motor parameters.
 
 ### Saving settings
 All control and speed parameters, whether changed via the remote or manual
@@ -117,8 +107,8 @@ device will start in the same state it was last used.
 
 ## Firmware
 The controller firmware is located [here](./firmware/commutator). It runs on a
-[Teensy 3.2](https://www.pjrc.com/store/teensy32.html). To compile 
-this firmware and program the microcontroller, you need the following 
+[Teensy 3.2](https://www.pjrc.com/store/teensy32.html). To compile
+this firmware and program the microcontroller, you need the following
 dependencies:
 
 - [Arduino IDE](https://www.arduino.cc/en/Main/Software)
@@ -187,22 +177,26 @@ This is a 4-layer circuit board with very high-tolerance design rules (min
 trace space: 6 mil. 0.3 mm min hole size)
 
 ### Assembly
-
 TODO: Pictures of assembly
 
 ## Hardware License
-Copyright Jakob Voigts & Jonathan P. Newman 2019.
-This documentation describes Open Hardware and is licensed under the
-CERN OHL v.1.2.
+This license pertains to documents in the `control-board`, `mechanical`, and
+`resources` subdirectory.
 
-You may redistribute and modify this documentation under the terms of the CERN
-OHL v.1.2. (http://ohwr.org/cernohl). This documentation is distributed WITHOUT
-ANY EXPRESS OR IMPLIED WARRANTY, INCLUDING OF MERCHANTABILITY, SATISFACTORY
-QUALITY AND FITNESS FOR A PARTICULAR PURPOSE. Please see the CERN OHL v.1.2 for
-applicable conditions
+This work is licensed to Jonathan P. Newman and Jakob Voigts under CC BY-NC-SA
+4.0. To view a copy of this license, visit
+https://creativecommons.org/licenses/by-nc-sa/4.0
+
+The creation of commercial products using the hardware documentation in this
+repository is not permitted without an explicit, supplementary agreement
+between the Licensor and the Licensee. Please get in touch if you are
+interested in commercially distributing this tool.
 
 ## Software/Firmware License
-Copyright 2019 Jonathan P. Newman 2019
+This license pertains to documents in the source code in the `firmware`
+subdirectory.
+
+Copyright 2020 Jonathan P. Newman
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
