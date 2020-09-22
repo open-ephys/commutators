@@ -7,19 +7,26 @@
 
 // Button read parameters
 #define HOLD_MSEC           300
-#define TOUCH_MSEC          5
+#define TOUCH_MSEC          7
 
 // Stepper parameters
 #define DETENTS             200
 #define USTEPS_PER_STEP     16
 #define USTEPS_PER_REV      (DETENTS * USTEPS_PER_STEP)
 
+// Motor driver parameters
+#define MOTOR_POLL_T_US     10
+#define MOTOR_SETTLE_US     80000
+
+// Drive gear ratio
+#define GEAR_RATIO          2.0
+
 // Capacitive touch buttons
 #define CAP_TURN_CW         0
 #define CAP_MODE_SEL        1
 #define CAP_TURN_CCW        15
 #define CAP_STOP_GO         17
-#define CAP_DELTA           30 // delta capacitance required
+#define CAP_DELTA           100 // delta capacitance required
 
 // Stepper driver pins
 #define MOT_DIR             14
@@ -35,7 +42,7 @@
 #define VMID_SEL            20
 #define CHARGE_CURR         21
 #define nPOW_FAIL           23
-#define CHARGE_CURR_THRESH  20 // Charge level required to allow operation. Arbitrary units
+#define CHARGE_CURR_THRESH  30 // Charge level required to allow operation. Arbitrary units
 
 // I2C
 #define SDA                 18
@@ -47,8 +54,8 @@
 #define IS31_BM             2
 
 // TMC2130 registers
-#define WRITE_FLAG          (1<<7) //write flag
-#define READ_FLAG           (0<<7) //read flag
+#define WRITE_FLAG          (1<<7)
+#define READ_FLAG           (0<<7)
 #define REG_GCONF           0x00
 #define REG_GSTAT           0x01
 #define REG_IHOLD_IRUN      0x10
@@ -56,6 +63,7 @@
 #define REG_COOLCONF        0x6D
 #define REG_DCCTRL          0x6E
 #define REG_DRVSTATUS       0x6F
+#define REG_PWMCONF         0x70
 
 // Settings address start byte
 #define SETTINGS_ADDR_START 0
@@ -345,10 +353,18 @@ void setup_motor()
     // TMC2130 config
     // voltage on AIN is current reference
     // Stealthchop is on
-    tmc_write(WRITE_FLAG | REG_GCONF, 0x00000003UL);
+    tmc_write(WRITE_FLAG | REG_GCONF, 0x00000007UL);
 
-    // IHOLD=0x10, IRUN=0x10
-    tmc_write(WRITE_FLAG | REG_IHOLD_IRUN, 0x00001010UL);
+    // Configure steathchip
+    // PWM_GRAD = 0x0F
+    // PWM_AMPL = 0xFF
+    // pwm_autoscale = 0x01
+    tmc_write(WRITE_FLAG | REG_PWMCONF, 0x00040FFFUL);
+
+    // IHOLD = 0x15
+    // IRUN = 0x15
+    // IHOLDDELAY = 0x05
+    tmc_write(WRITE_FLAG | REG_IHOLD_IRUN, 0x00051515UL);
 
     switch (USTEPS_PER_STEP) {
         case 1:
@@ -388,7 +404,7 @@ void setup_motor()
     motor.setMinPulseWidth(3);
 
     // Setup run() timer
-    mot_timer.begin(run_motor_isr, 10);
+    mot_timer.begin(run_motor_isr, MOTOR_POLL_T_US);
 }
 
 void run_motor_isr()
@@ -404,7 +420,7 @@ void run_motor_isr()
         motor.setCurrentPosition(0);
     }
 
-    if (motor_settled_cnt == 50e3)
+    if (motor_settled_cnt == MOTOR_SETTLE_US / MOTOR_POLL_T_US)
         digitalWriteFast(MOT_CFG6_EN, HIGH);
 }
 
@@ -445,15 +461,13 @@ void setup_power()
 
 void update_motor_speed()
 {
-    // * 2 is because this is a 2x reduction gear
-    auto max_speed = (float)USTEPS_PER_REV * 2 * ctx.speed_rpm / 60.0;
+    auto max_speed = (float)USTEPS_PER_REV * GEAR_RATIO * ctx.speed_rpm / 60.0;
     motor.setMaxSpeed(max_speed);
 }
 
 void update_motor_accel()
 {
-    // * 2 is because this is a 2x reduction gear
-    auto a = (float)USTEPS_PER_REV * 2 * ctx.accel_rpmm / 60.0;
+    auto a = (float)USTEPS_PER_REV * GEAR_RATIO * ctx.accel_rpmm / 60.0;
     motor.setAcceleration(a);
 }
 
@@ -498,9 +512,7 @@ void poll_turns()
 
         // Set all targets to 0 because we are overriding
         // and Disable driver
-        hard_stop    // NB: see note at declaration
-
-();
+        hard_stop();
 
         return;
     }
@@ -614,13 +626,27 @@ void loop()
                 save_required = true;
             }
 
+            if (root.containsKey("print")) {
+
+                StaticJsonBuffer<200> jbuff;
+                JsonObject& doc = jbuff.createObject();
+
+                doc["led"] = ctx.led_on;
+                doc["commutator_en"] = ctx.commutator_en;
+                doc["speed_rpm"] = ctx.speed_rpm;
+                doc["accel_rpmm"] = ctx.accel_rpmm;
+                doc["target"] = motor.distanceToGo();
+                doc["motor_running"] = motor.distanceToGo() != 0;
+                doc.printTo(Serial);
+            }
+
             if (root.containsKey("led")) {
                 ctx.led_on = root["led"].as<bool>();
                 save_required = true;
             }
 
             if (root.containsKey("turn") && ctx.commutator_en) {
-                turn_motor(2 * root["turn"].as<double>()); // 2 * for reduction gear
+                turn_motor(GEAR_RATIO * root["turn"].as<double>());
             }
         }
     }
