@@ -73,7 +73,7 @@ struct Context {
     bool led_on = true;
     bool commutator_en = false;
     float speed_rpm = 100;
-    float accel_rpmm = 400;
+    float accel_rpmm = 200;
 };
 
 // Holds the current state
@@ -246,13 +246,20 @@ void turn_motor(double turns)
 }
 
 // Emergency motor stop/reset
-void hard_stop() {
+void hard_stop()
+{
     motor.setAcceleration(1e6);
     motor.stop();
     motor.runToPosition();
     motor.setCurrentPosition(0);
     target_turns = 0.0;
     update_motor_accel();
+}
+
+void soft_stop()
+{
+    motor.setCurrentPosition(0);
+    target_turns = 0.0;
 }
 
 void set_rgb_color(byte r, byte g, byte b)
@@ -361,10 +368,10 @@ void setup_motor()
     // pwm_autoscale = 0x01
     tmc_write(WRITE_FLAG | REG_PWMCONF, 0x00040FFFUL);
 
-    // IHOLD = 0x15
-    // IRUN = 0x15
-    // IHOLDDELAY = 0x05
-    tmc_write(WRITE_FLAG | REG_IHOLD_IRUN, 0x00051515UL);
+    // IHOLD = 0x0A
+    // IRUN = 0x1F (Max)
+    // IHOLDDELAY = 0x06
+    tmc_write(WRITE_FLAG | REG_IHOLD_IRUN, 0x00041F01UL);
 
     switch (USTEPS_PER_STEP) {
         case 1:
@@ -420,8 +427,8 @@ void run_motor_isr()
         motor.setCurrentPosition(0);
     }
 
-    if (motor_settled_cnt == MOTOR_SETTLE_US / MOTOR_POLL_T_US)
-        digitalWriteFast(MOT_CFG6_EN, HIGH);
+    //if (motor_settled_cnt == MOTOR_SETTLE_US / MOTOR_POLL_T_US)
+    //    digitalWriteFast(MOT_CFG6_EN, HIGH);
 }
 
 void power_fail_isr()
@@ -502,7 +509,7 @@ void poll_turns()
     if (touch_cw.result == held) {
 
         // If the motor is turning, stop it
-        hard_stop();
+        soft_stop();
 
         // Set huge target
         motor.move(10e6);
@@ -510,9 +517,10 @@ void poll_turns()
         while (touch_cw.result == held)
             check_touch(&touch_cw);
 
+
         // Set all targets to 0 because we are overriding
         // and Disable driver
-        hard_stop();
+        soft_stop();
 
         return;
     }
@@ -522,7 +530,7 @@ void poll_turns()
     if (touch_ccw.result == held) {
 
         // If the motor is turning, stop it
-        hard_stop();
+        soft_stop();
 
         // Set huge targetr
         motor.move(-10e6);
@@ -532,7 +540,7 @@ void poll_turns()
 
         // Set all targets to 0 because we are overriding
         // and Disable driver
-        hard_stop();
+        soft_stop();
 
         return;
     }
@@ -550,8 +558,14 @@ void poll_stop_go()
         // Hard disable/reset on motor
         hard_stop();
 
+        // Allow axel to turn freely
+        digitalWriteFast(MOT_CFG6_EN, HIGH); // Inactivate driver (LOW active)
+
     } else if (touch_stopgo.result == held && touch_stopgo.fresh
         && !ctx.commutator_en) { // Long hold required turn on the motor after disable
+
+        // Enable driver
+        digitalWriteFast(MOT_CFG6_EN, LOW); // Inactivate driver (LOW active)
 
         ctx.commutator_en = true;
         save_required = true;
@@ -626,20 +640,6 @@ void loop()
                 save_required = true;
             }
 
-            if (root.containsKey("print")) {
-
-                StaticJsonBuffer<200> jbuff;
-                JsonObject& doc = jbuff.createObject();
-
-                doc["led"] = ctx.led_on;
-                doc["commutator_en"] = ctx.commutator_en;
-                doc["speed_rpm"] = ctx.speed_rpm;
-                doc["accel_rpmm"] = ctx.accel_rpmm;
-                doc["target"] = motor.distanceToGo();
-                doc["motor_running"] = motor.distanceToGo() != 0;
-                doc.printTo(Serial);
-            }
-
             if (root.containsKey("led")) {
                 ctx.led_on = root["led"].as<bool>();
                 save_required = true;
@@ -647,6 +647,20 @@ void loop()
 
             if (root.containsKey("turn") && ctx.commutator_en) {
                 turn_motor(GEAR_RATIO * root["turn"].as<double>());
+            }
+
+            if (root.containsKey("print")) {
+
+                StaticJsonBuffer<200> jbuff;
+                JsonObject& doc = jbuff.createObject();
+
+                doc["led"] = ctx.led_on;
+                doc["enable"] = ctx.commutator_en;
+                doc["speed"] = ctx.speed_rpm;
+                doc["accel"] = ctx.accel_rpmm;
+                doc["target"] = motor.distanceToGo();
+                doc["motor_running"] = motor.distanceToGo() != 0;
+                doc.printTo(Serial);
             }
         }
     }
