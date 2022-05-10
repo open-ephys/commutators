@@ -127,7 +127,7 @@ ArduinoJSON can be installed through the Arduino IDE's package manager.
 ## Construction
 
 ### Bill of Materials
-The BOM is located [here](https://docs.google.com/spreadsheets/d/1F-KWcdvH_63iXjZf0cgCfDiFX6XXW3qw6rlR8DZrFpQ/edit#gid=219603647).
+The BOM is located [here](https://docs.google.com/spreadsheets/d/1M2R0Q2-OuRHzctt05BxtA3hxNcCHtRZHORzCKElmG1Q/edit#gid=1283420334).
 
 ### Mechanical
 The mechanical component of the commutator are as follows:
@@ -136,7 +136,7 @@ The mechanical component of the commutator are as follows:
 1. 2x reduction gears (3D-printed)
 1. NEMA-11 Stepper Motor
 1. Housing (3D-printed)
-1. Some fasterners
+1. Some fasteners
 
 Mechanical designs are located [here](./mechanical/). STL files for 3D printing
 are located in the `stl` subdirectory. Links to purchase each of these
@@ -175,9 +175,6 @@ as follows:
 
 This is a 4-layer circuit board with very high-tolerance design rules (min
 trace space: 6 mil. 0.3 mm min hole size)
-
-### Assembly
-TODO: Pictures of assembly
 
 ## Hardware License
 This license pertains to documents in the `control-board`, `mechanical`, and
