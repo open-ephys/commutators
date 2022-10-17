@@ -38,6 +38,9 @@ rotational measurements are taken.
 
 ## Usage
 
+**Note**: A high-quality, within-spec micro USB cable must be used when connecting 
+the commutator to the host computer.
+
 ### LED
 The LED tells you about the commutator state:
 
