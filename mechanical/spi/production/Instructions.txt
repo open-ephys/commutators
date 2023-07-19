@@ -1,0 +1,10 @@
+Printing Methods:
+Gears - SLA
+Enclosure - SLS
+
+The gears are glued to the Orbex and motor shafts
+
+Set gear ratio (16.0/9.0) using the GEAR_RATIO macro found on line 22 of https://github.com/open-ephys/onix-commutator/blob/master/firmware/commutator/commutator.ino (this is valid since commit f684f83; this could change if commutator firmware is updated)
+
+All 11 holes need to be tapped. I'm not sure how OEPS does it for the Coax Commutator, but I assume whatever tool you use for that can be used for tapping the holes on the coax commutator
+@Jon Newman I don't think I missed anything, but if you have anything add ^ feel free
