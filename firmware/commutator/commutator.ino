@@ -5,6 +5,19 @@
 #include <i2c_t3.h>
 #include <math.h>
 
+// Commutator type
+//#define COMMUTATOR_TYPE     "SPI Rev. A"
+//#define GEAR_RATIO          1.77777777778 // SPI
+
+#define COMMUTATOR_TYPE     "Single Channel Coax Rev. A"
+#define GEAR_RATIO          2.0
+
+//#define COMMUTATOR_TYPE     "Dual Channel Coax Rev. A"
+//#define GEAR_RATIO          2.0 
+
+// Firmware Version
+#define FIRMWARE_VER        "1.2.0"
+
 // Button read parameters
 #define HOLD_MSEC           300
 #define TOUCH_MSEC          7
@@ -13,13 +26,11 @@
 #define DETENTS             200
 #define USTEPS_PER_STEP     16
 #define USTEPS_PER_REV      (DETENTS * USTEPS_PER_STEP)
+#define MAX_TURNS           (2147483647 / USTEPS_PER_REV / GEAR_RATIO)
 
 // Motor driver parameters
 #define MOTOR_POLL_T_US     10
 #define MOTOR_SETTLE_US     80000
-
-// Drive gear ratio
-#define GEAR_RATIO          2.0
 
 // Capacitive touch buttons
 #define CAP_TURN_CW         0
@@ -90,7 +101,6 @@ double target_turns = 0;
 elapsedMillis global_millis;
 
 // Motor update timer
-volatile int motor_settled_cnt = 0;
 IntervalTimer mot_timer;
 
 // Triggered in case of under current from host
@@ -184,10 +194,10 @@ uint8_t tmc_write(uint8_t cmd, uint32_t data)
     digitalWriteFast(MOT_CFG3_CS, LOW);
 
     s = SPI.transfer(cmd);
-    SPI.transfer((data >> 24UL) & 0xFF) & 0xFF;
-    SPI.transfer((data >> 16UL) & 0xFF) & 0xFF;
-    SPI.transfer((data >> 8UL) & 0xFF) & 0xFF;
-    SPI.transfer((data >> 0UL) & 0xFF) & 0xFF;
+    SPI.transfer((data >> 24UL) & 0xFF); //& 0xFF;
+    SPI.transfer((data >> 16UL) & 0xFF); //& 0xFF;
+    SPI.transfer((data >> 8UL) & 0xFF); //& 0xFF;
+    SPI.transfer((data >> 0UL) & 0xFF); //& 0xFF;
 
     digitalWriteFast(MOT_CFG3_CS, HIGH);
 
@@ -238,11 +248,25 @@ void save_settings()
 
 // Motor target update. We integrate turns in the target position and apply to
 // motor's motion.
-void turn_motor(double turns)
+void turn_commutator(double turns)
 {
+
+    // Invalid request
+    if (abs(turns) > MAX_TURNS) {
+        return; // Failure, cant turn this far
+    }
+    
     // Relative move
     target_turns += turns;
-    motor.moveTo(lround(target_turns * (double)USTEPS_PER_REV));
+    
+    if (abs(target_turns) < MAX_TURNS)
+    {
+        motor.moveTo(lround(target_turns * (double)USTEPS_PER_REV * GEAR_RATIO));
+    } else { 
+        // Deal with very unlikely case of overflow
+        soft_stop();
+        turn_commutator(turns); // Restart this routine now that position has been zeroed
+    }
 }
 
 // Emergency motor stop/reset
@@ -412,23 +436,16 @@ void setup_motor()
 
     // Setup run() timer
     mot_timer.begin(run_motor_isr, MOTOR_POLL_T_US);
+
+    // Activate motor
+    digitalWriteFast(MOT_CFG6_EN, LOW); // (LOW active)
 }
 
 void run_motor_isr()
 {
     if (motor.distanceToGo() != 0) {
-        //enable motor
-        digitalWriteFast(MOT_CFG6_EN, LOW);
         motor.run();
-        motor_settled_cnt = 0;
-    } else {
-        motor_settled_cnt++;
-        target_turns = 0.0; // Take opportunity to reset motor position to 0
-        motor.setCurrentPosition(0);
-    }
-
-    //if (motor_settled_cnt == MOTOR_SETTLE_US / MOTOR_POLL_T_US)
-    //    digitalWriteFast(MOT_CFG6_EN, HIGH);
+    } 
 }
 
 void power_fail_isr()
@@ -646,7 +663,7 @@ void loop()
             }
 
             if (root.containsKey("turn") && ctx.commutator_en) {
-                turn_motor(GEAR_RATIO * root["turn"].as<double>());
+                turn_commutator(root["turn"].as<double>());
             }
 
             if (root.containsKey("print")) {
@@ -654,11 +671,16 @@ void loop()
                 StaticJsonBuffer<200> jbuff;
                 JsonObject& doc = jbuff.createObject();
 
+                doc["type"] = COMMUTATOR_TYPE;
+                doc["firmware"] = FIRMWARE_VER;
                 doc["led"] = ctx.led_on;
                 doc["enable"] = ctx.commutator_en;
                 doc["speed"] = ctx.speed_rpm;
                 doc["accel"] = ctx.accel_rpmm;
-                doc["target"] = motor.distanceToGo();
+                doc["steps_to_go"] = motor.distanceToGo();
+                doc["target_steps"] = motor.targetPosition();
+                doc["target_turns"] = target_turns;
+                doc["max_turns"] = MAX_TURNS;
                 doc["motor_running"] = motor.distanceToGo() != 0;
                 doc.printTo(Serial);
             }
