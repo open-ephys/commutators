@@ -5,18 +5,21 @@
 #include <i2c_t3.h>
 #include <math.h>
 
-// Commutator type
-//#define COMMUTATOR_TYPE     "SPI Rev. A"
-//#define GEAR_RATIO          1.77777777778 // SPI
-
-#define COMMUTATOR_TYPE     "Single Channel Coax Rev. A"
-#define GEAR_RATIO          2.0
-
-//#define COMMUTATOR_TYPE     "Dual Channel Coax Rev. A"
-//#define GEAR_RATIO          2.0 
+// Uncomment to continuously dump state over Serial
+//#define DEBUG
 
 // Firmware Version
-#define FIRMWARE_VER        "1.2.0"
+#define FIRMWARE_VER        "1.3.0"
+
+// Select a commutator type by uncommenting one of the following
+#define COMMUTATOR_TYPE     "SPI Rev. A"
+#define GEAR_RATIO          1.77777777778 // SPI
+
+//#define COMMUTATOR_TYPE     "Single Channel Coax Rev. A"
+//#define GEAR_RATIO          2.0
+
+//#define COMMUTATOR_TYPE     "Dual Channel Coax Rev. A"
+//#define GEAR_RATIO          2.0
 
 // Button read parameters
 #define HOLD_MSEC           300
@@ -37,7 +40,7 @@
 #define CAP_MODE_SEL        1
 #define CAP_TURN_CCW        15
 #define CAP_STOP_GO         17
-#define CAP_DELTA           100 // delta capacitance required
+#define CAP_DELTA           1.15 // Minimum fraction of nominal button capacitance indicating a "press"
 
 // Stepper driver pins
 #define MOT_DIR             14
@@ -53,7 +56,9 @@
 #define VMID_SEL            20
 #define CHARGE_CURR         21
 #define nPOW_FAIL           23
-#define CHARGE_CURR_THRESH  30 // Charge level required to allow operation. Arbitrary units
+#define CHARGE_CURR_THRESH  0.06 // Super capacitor charge current, in Amps, that must be reached to transistion to normal operation.
+#define RPROG               2000.0 // Charge current programming resistor (Ohms)
+#define CODE_TO_AMPS        (3.3 / 1024 * 1000.0 / RPROG)
 
 // I2C
 #define SDA                 18
@@ -118,7 +123,7 @@ struct TouchSensor {
     TouchState result = untouched;
 
     int pin = 0;
-    int calib_val = 0;
+    int cap_thresh = 0;
     bool fresh = true;
 };
 
@@ -141,7 +146,7 @@ void calibrate_touch(TouchSensor *sensor, unsigned int msec)
         k++;
     }
 
-    sensor->calib_val = (int)(val / k);
+    sensor->cap_thresh = (int)(val * CAP_DELTA / k);
 }
 
 void check_touch(TouchSensor *sensor, unsigned int hold_msec = HOLD_MSEC)
@@ -156,7 +161,7 @@ void check_touch(TouchSensor *sensor, unsigned int hold_msec = HOLD_MSEC)
     // consensus on fingy presence
     while ((fingy && global_millis <= hold_msec)
            || global_millis < TOUCH_MSEC) {
-        fingy = ((touchRead(sensor->pin) - sensor->calib_val) > CAP_DELTA);
+        fingy = (touchRead(sensor->pin) > sensor->cap_thresh);
         consecutive += fingy ? 1 : 0;
         k++;
     }
@@ -255,14 +260,14 @@ void turn_commutator(double turns)
     if (abs(turns) > MAX_TURNS) {
         return; // Failure, cant turn this far
     }
-    
+
     // Relative move
     target_turns += turns;
-    
+
     if (abs(target_turns) < MAX_TURNS)
     {
         motor.moveTo(lround(target_turns * (double)USTEPS_PER_REV * GEAR_RATIO));
-    } else { 
+    } else {
         // Deal with very unlikely case of overflow
         soft_stop();
         turn_commutator(turns); // Restart this routine now that position has been zeroed
@@ -278,6 +283,7 @@ void hard_stop()
     motor.setCurrentPosition(0);
     target_turns = 0.0;
     update_motor_accel();
+
 }
 
 void soft_stop()
@@ -325,10 +331,10 @@ void setup_cap_touch()
     touch_mode.pin = CAP_MODE_SEL;
     touch_stopgo.pin = CAP_STOP_GO;
 
-    calibrate_touch(&touch_cw, 10);
-    calibrate_touch(&touch_ccw, 10);
-    calibrate_touch(&touch_mode, 10);
-    calibrate_touch(&touch_stopgo, 10);
+    calibrate_touch(&touch_cw, 25);
+    calibrate_touch(&touch_ccw, 25);
+    calibrate_touch(&touch_mode, 25);
+    calibrate_touch(&touch_stopgo, 25);
 }
 
 void setup_rgb()
@@ -338,7 +344,7 @@ void setup_rgb()
     Wire.setDefaultTimeout(200000); // 200ms
 
     // Enable LED current driver
-    pinMode(IS31_SHDN, OUTPUT);
+
     digitalWriteFast(IS31_SHDN, HIGH);
     delay(1);
 
@@ -358,23 +364,38 @@ void setup_rgb()
     Wire.endTransmission();
 }
 
+void setup_io()
+{
+    pinMode(MOT_CFG6_EN, OUTPUT);
+    pinMode(MOT_DIR, OUTPUT);
+    pinMode(MOT_STEP, OUTPUT);
+    pinMode(MOT_CFG3_CS, OUTPUT);
+    pinMode(MOT_CFG1_MOSI, OUTPUT);
+    pinMode(MOT_CFG0_MISO, INPUT);
+    pinMode(MOT_CFG2_SCLK, OUTPUT);
+
+    pinMode(MOT_POW_EN, OUTPUT);
+    pinMode(VMID_SEL, OUTPUT);
+    pinMode(nPOW_FAIL, INPUT);
+
+    pinMode(IS31_SHDN, OUTPUT);
+}
+
+inline void motor_driver_en(bool enable)
+{
+    digitalWriteFast(MOT_CFG6_EN, enable ? LOW : HIGH); // Inactivate driver (LOW active)
+}
+
 void setup_motor()
 {
-    // set pins
-    pinMode(MOT_CFG6_EN, OUTPUT);
-    digitalWriteFast(MOT_CFG6_EN, HIGH); // Inactivate driver (LOW active)
-    pinMode(MOT_DIR, OUTPUT);
+    // Default state
+    motor_driver_en(false);
     digitalWriteFast(MOT_DIR, LOW); // LOW or HIGH
-    pinMode(MOT_STEP, OUTPUT);
     digitalWriteFast(MOT_STEP, LOW);
 
-    pinMode(MOT_CFG3_CS, OUTPUT);
     digitalWriteFast(MOT_CFG3_CS, HIGH);
-    pinMode(MOT_CFG1_MOSI, OUTPUT);
     digitalWriteFast(MOT_CFG1_MOSI, LOW);
-    pinMode(MOT_CFG0_MISO, INPUT);
     digitalWriteFast(MOT_CFG0_MISO, HIGH);
-    pinMode(MOT_CFG2_SCLK, OUTPUT);
     digitalWriteFast(MOT_CFG2_SCLK, LOW);
 
     // init SPI
@@ -438,14 +459,14 @@ void setup_motor()
     mot_timer.begin(run_motor_isr, MOTOR_POLL_T_US);
 
     // Activate motor
-    digitalWriteFast(MOT_CFG6_EN, LOW); // (LOW active)
+    motor_driver_en(true);
 }
 
 void run_motor_isr()
 {
     if (motor.distanceToGo() != 0) {
         motor.run();
-    } 
+    }
 }
 
 void power_fail_isr()
@@ -463,24 +484,28 @@ void setup_power()
     Wire.endTransmission();
 
     // Turn on the motor power
-    pinMode(MOT_POW_EN, OUTPUT);
+
     digitalWriteFast(MOT_POW_EN, HIGH);
     delay(100);
 
-    pinMode(VMID_SEL, OUTPUT);
+
     digitalWriteFast(VMID_SEL, HIGH); // 2.7V across each super cap
 
-    pinMode(nPOW_FAIL, INPUT);
     attachInterrupt(nPOW_FAIL, power_fail_isr, FALLING);
 
     // Wait for charge current stabilize and breath LED in meantime
-    while (analogRead(CHARGE_CURR) >= CHARGE_CURR_THRESH)
-        delay(10);
+    while (charge_current() >= CHARGE_CURR_THRESH)
+      delay(10);
 
     Wire.beginTransmission(IS31_ADDR);
     Wire.write(0x02);
     Wire.write(0x00); // Turn off breathing mode
     Wire.endTransmission();
+}
+
+inline float charge_current()
+{
+    return CODE_TO_AMPS * analogRead(CHARGE_CURR);
 }
 
 void update_motor_speed()
@@ -539,6 +564,11 @@ void poll_turns()
         // and Disable driver
         soft_stop();
 
+
+#ifdef DEBUG
+        Serial.println("CW: held\n");
+#endif
+
         return;
     }
 
@@ -559,6 +589,10 @@ void poll_turns()
         // and Disable driver
         soft_stop();
 
+#ifdef DEBUG
+        Serial.println("CCW: held\n");
+#endif
+
         return;
     }
 }
@@ -567,8 +601,10 @@ void poll_stop_go()
 {
     check_touch(&touch_stopgo, 100);
 
-    if (touch_stopgo.result && touch_stopgo.fresh
+    if (touch_stopgo.result
+        && touch_stopgo.fresh
         && ctx.commutator_en) { // Touch or hold can turn off the motor
+
         ctx.commutator_en = false;
         save_required = true;
 
@@ -576,16 +612,27 @@ void poll_stop_go()
         hard_stop();
 
         // Allow axel to turn freely
-        digitalWriteFast(MOT_CFG6_EN, HIGH); // Inactivate driver (LOW active)
+        motor_driver_en(false);
 
-    } else if (touch_stopgo.result == held && touch_stopgo.fresh
-        && !ctx.commutator_en) { // Long hold required turn on the motor after disable
+#ifdef DEBUG
+        Serial.print("Stop/Go (on to off): ");
+        Serial.println(touch_stopgo.result);
+#endif
 
-        // Enable driver
-        digitalWriteFast(MOT_CFG6_EN, LOW); // Inactivate driver (LOW active)
+    } else if (touch_stopgo.result == held
+               && touch_stopgo.fresh
+               && !ctx.commutator_en) { // Long hold required turn on the motor after disable
 
         ctx.commutator_en = true;
         save_required = true;
+
+        // Enable driver
+        motor_driver_en(true);
+
+#ifdef DEBUG
+        Serial.print("Stop/Go (off to on): ");
+        Serial.println(touch_stopgo.result);
+#endif
     }
 }
 
@@ -593,8 +640,14 @@ void setup()
 {
     Serial.begin(9600);
 
+    // Setup pin directions
+    setup_io();
+
     // Load parameters from last use
     load_settings();
+
+    // Shutdown the motor driver so that it does not the supercap charge current
+    motor_driver_en(false);
 
     // Setup each block of the board
     setup_rgb(); // Must come first, used by all that follow
@@ -614,6 +667,30 @@ void loop()
     // Poll manual turn buttons
     poll_turns();
 
+#ifdef DEBUG
+
+    Serial.println("Stop/Go:");
+    Serial.print(touchRead(touch_stopgo.pin));
+    Serial.print("/");
+    Serial.println(touch_stopgo.cap_thresh);
+
+    Serial.println("CW:");
+    Serial.print(touchRead(touch_cw.pin));
+    Serial.print("/");
+    Serial.println(touch_cw.cap_thresh);
+
+    Serial.println("CCW:");
+    Serial.print(touchRead(touch_ccw.pin));
+    Serial.print("/");
+    Serial.println(touch_ccw.cap_thresh);
+
+    Serial.println("LED:");
+    Serial.print(touchRead(touch_mode.pin));
+    Serial.print("/");
+    Serial.println(touch_mode.cap_thresh);
+
+#endif
+
     // Memory pool for JSON object tree
     if (Serial.available()) {
 
@@ -625,7 +702,13 @@ void loop()
             if (root.containsKey("enable")) {
                 ctx.commutator_en = root["enable"].as<bool>();
                 if (!ctx.commutator_en)
+                {
                     hard_stop();
+                    motor_driver_en(false);
+                } else {
+                    motor_driver_en(true);
+                }
+
                 save_required = true;
             }
 
@@ -668,7 +751,7 @@ void loop()
 
             if (root.containsKey("print")) {
 
-                StaticJsonBuffer<200> jbuff;
+                StaticJsonBuffer<256> jbuff;
                 JsonObject& doc = jbuff.createObject();
 
                 doc["type"] = COMMUTATOR_TYPE;
@@ -682,7 +765,10 @@ void loop()
                 doc["target_turns"] = target_turns;
                 doc["max_turns"] = MAX_TURNS;
                 doc["motor_running"] = motor.distanceToGo() != 0;
+                doc["charge_curr"] = charge_current();
+                doc["power_good"] = digitalReadFast(nPOW_FAIL) == HIGH;
                 doc.printTo(Serial);
+                Serial.print("\n");
             }
         }
     }
