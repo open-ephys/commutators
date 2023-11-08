@@ -12,14 +12,14 @@
 #define FIRMWARE_VER        "1.3.0"
 
 // Select a commutator type by uncommenting one of the following
-#define COMMUTATOR_TYPE     "SPI Rev. A"
-#define GEAR_RATIO          1.77777777778 // SPI
+//#define COMMUTATOR_TYPE     "SPI Rev. A"
+//#define GEAR_RATIO          1.77777777778 // SPI
 
 //#define COMMUTATOR_TYPE     "Single Channel Coax Rev. A"
 //#define GEAR_RATIO          2.0
 
-//#define COMMUTATOR_TYPE     "Dual Channel Coax Rev. A"
-//#define GEAR_RATIO          2.0
+#define COMMUTATOR_TYPE     "Dual Channel Coax Rev. A"
+#define GEAR_RATIO          3.06666666667
 
 // Button read parameters
 #define HOLD_MSEC           300
@@ -40,7 +40,7 @@
 #define CAP_MODE_SEL        1
 #define CAP_TURN_CCW        15
 #define CAP_STOP_GO         17
-#define CAP_DELTA           1.15 // Minimum fraction of nominal button capacitance indicating a "press"
+#define CAP_DELTA           1.09 // Minimum fraction of nominal button capacitance indicating a "press"
 
 // Stepper driver pins
 #define MOT_DIR             14
