@@ -9,7 +9,7 @@
 //#define DEBUG
 
 // Firmware Version
-#define FIRMWARE_VER        "1.3.0"
+#define FIRMWARE_VER        "1.4.0"
 
 // Select a commutator type by uncommenting one of the following
 //#define COMMUTATOR_TYPE     "SPI Rev. A"
@@ -22,8 +22,7 @@
 #define GEAR_RATIO          3.06666666667
 
 // Button read parameters
-#define HOLD_MSEC           300
-#define TOUCH_MSEC          7
+#define TOUCH_MSEC          15
 
 // Stepper parameters
 #define DETENTS             200
@@ -40,7 +39,7 @@
 #define CAP_MODE_SEL        1
 #define CAP_TURN_CCW        15
 #define CAP_STOP_GO         17
-#define CAP_DELTA           1.09 // Minimum fraction of nominal button capacitance indicating a "press"
+#define CAP_DELTA           1.15 // Minimum fraction of nominal button capacitance indicating a "press"
 
 // Stepper driver pins
 #define MOT_DIR             14
@@ -110,11 +109,11 @@ IntervalTimer mot_timer;
 
 // Triggered in case of under current from host
 // TODO: use somehow
-volatile bool power_failure = false;
+// volatile bool power_failure = false;
 
 // I was touched..., by the power..., on my unit..., in broooooooooooad
 // daylight
-enum TouchState { untouched, touched, held };
+enum TouchState { untouched, held };
 
 struct TouchSensor {
 
@@ -134,14 +133,12 @@ TouchSensor touch_ccw;
 TouchSensor touch_mode;
 TouchSensor touch_stopgo;
 
-void calibrate_touch(TouchSensor *sensor, unsigned int msec)
+void calibrate_touch(TouchSensor *sensor)
 {
     global_millis = 0;
-
-    int k = 0;
     long long val = 0;
-    while (global_millis < msec) {
-
+    int k = 0;
+    while (global_millis < TOUCH_MSEC) {
         val += touchRead(sensor->pin);
         k++;
     }
@@ -149,47 +146,30 @@ void calibrate_touch(TouchSensor *sensor, unsigned int msec)
     sensor->cap_thresh = (int)(val * CAP_DELTA / k);
 }
 
-void check_touch(TouchSensor *sensor, unsigned int hold_msec = HOLD_MSEC)
+void check_touch(TouchSensor *sensor)
 {
     global_millis = 0;
-    bool fingy = true;
-    int consecutive = 0;
+    long long fingy = 0;
     int k = 0;
-    sensor->fresh = false;
 
-    // Check the pad for a min of TOUCH_MSEC and a max of HOLD_MSEC to get
-    // consensus on fingy presence
-    while ((fingy && global_millis <= hold_msec)
-           || global_millis < TOUCH_MSEC) {
-        fingy = (touchRead(sensor->pin) > sensor->cap_thresh);
-        consecutive += fingy ? 1 : 0;
+    // Check the pad for TOUCH_MSEC to get consensus on fingy presence
+    while (global_millis < TOUCH_MSEC) {
+        fingy += touchRead(sensor->pin);
         k++;
     }
 
-    // Do we deserve an update?
-    auto consensus = consecutive > k * 0.9;
+    TouchState last_state = sensor->result;
+    sensor->result = (fingy / k > sensor->cap_thresh) ? held : untouched;
+    sensor->fresh = last_state != sensor->result;
 
-    if (global_millis >= hold_msec && consensus) {
-        sensor->fresh = sensor->result != held;
-        sensor->result = held;
-        return;
-    }
+#ifdef DEBUG
+    Serial.print(sensor->pin);
+    Serial.print(": ");
+    Serial.print(fingy / k);
+    Serial.print("/");
+    Serial.println(sensor->cap_thresh);
+#endif
 
-    // Transitions out of held are forbidden to debounce
-    if (consensus && sensor->result != held) {
-        sensor->fresh = sensor->result != touched;
-        sensor->result = touched;
-        return;
-    }
-
-    // Do we deserve an update?
-    consensus = consecutive < k * 0.1;
-
-    if (consensus) {
-        sensor->fresh = sensor->result != untouched;
-        sensor->result = untouched;
-        return;
-    }
 }
 
 uint8_t tmc_write(uint8_t cmd, uint32_t data)
@@ -199,10 +179,10 @@ uint8_t tmc_write(uint8_t cmd, uint32_t data)
     digitalWriteFast(MOT_CFG3_CS, LOW);
 
     s = SPI.transfer(cmd);
-    SPI.transfer((data >> 24UL) & 0xFF); //& 0xFF;
-    SPI.transfer((data >> 16UL) & 0xFF); //& 0xFF;
-    SPI.transfer((data >> 8UL) & 0xFF); //& 0xFF;
-    SPI.transfer((data >> 0UL) & 0xFF); //& 0xFF;
+    SPI.transfer((data >> 24UL) & 0xFF);
+    SPI.transfer((data >> 16UL) & 0xFF);
+    SPI.transfer((data >> 8UL) & 0xFF);
+    SPI.transfer((data >> 0UL) & 0xFF);
 
     digitalWriteFast(MOT_CFG3_CS, HIGH);
 
@@ -257,9 +237,8 @@ void turn_commutator(double turns)
 {
 
     // Invalid request
-    if (abs(turns) > MAX_TURNS) {
+    if (abs(turns) > MAX_TURNS)
         return; // Failure, cant turn this far
-    }
 
     // Relative move
     target_turns += turns;
@@ -331,10 +310,10 @@ void setup_cap_touch()
     touch_mode.pin = CAP_MODE_SEL;
     touch_stopgo.pin = CAP_STOP_GO;
 
-    calibrate_touch(&touch_cw, 25);
-    calibrate_touch(&touch_ccw, 25);
-    calibrate_touch(&touch_mode, 25);
-    calibrate_touch(&touch_stopgo, 25);
+    calibrate_touch(&touch_cw);
+    calibrate_touch(&touch_ccw);
+    calibrate_touch(&touch_mode);
+    calibrate_touch(&touch_stopgo);
 }
 
 void setup_rgb()
@@ -469,10 +448,10 @@ void run_motor_isr()
     }
 }
 
-void power_fail_isr()
-{
-    power_failure = true;
-}
+// void power_fail_isr()
+// {
+//     power_failure = true;
+// }
 
 void setup_power()
 {
@@ -484,14 +463,13 @@ void setup_power()
     Wire.endTransmission();
 
     // Turn on the motor power
-
     digitalWriteFast(MOT_POW_EN, HIGH);
     delay(100);
 
+    // NB: Set 2.7V across each super cap
+    digitalWriteFast(VMID_SEL, HIGH);
 
-    digitalWriteFast(VMID_SEL, HIGH); // 2.7V across each super cap
-
-    attachInterrupt(nPOW_FAIL, power_fail_isr, FALLING);
+    // attachInterrupt(nPOW_FAIL, power_fail_isr, FALLING);
 
     // Wait for charge current stabilize and breath LED in meantime
     while (charge_current() >= CHARGE_CURR_THRESH)
@@ -523,19 +501,11 @@ void update_motor_accel()
 void poll_led()
 {
     // Poll the mode button
-    check_touch(&touch_mode, 100);
+    check_touch(&touch_mode);
 
-    // NB: see note at declaration
-
-    if (touch_mode.result == held && touch_mode.fresh && ctx.led_on) {
-        // If held and fresh, toggle LED
-        ctx.led_on = false;
+    if (touch_mode.result && touch_mode.fresh) { // If touched and fresh, toggle LED
         save_required = true;
-
-    } else if (touch_mode.result == held && touch_mode.fresh && !ctx.led_on) {
-        // If LED is off and touched and fresh, toggle LED
-        ctx.led_on = true;
-        save_required = true;
+        ctx.led_on = !ctx.led_on;
     }
 }
 
@@ -547,8 +517,9 @@ void poll_turns()
         return;
 
     // Poll the cw button
-    check_touch(&touch_cw, 100);
-    if (touch_cw.result == held) {
+    check_touch(&touch_cw);
+
+    if (touch_cw.result) {
 
         // If the motor is turning, stop it
         soft_stop();
@@ -556,9 +527,8 @@ void poll_turns()
         // Set huge target
         motor.move(10e6);
 
-        while (touch_cw.result == held)
+        while (touch_cw.result)
             check_touch(&touch_cw);
-
 
         // Set all targets to 0 because we are overriding
         // and Disable driver
@@ -573,7 +543,8 @@ void poll_turns()
     }
 
     // Poll the ccw button
-    check_touch(&touch_ccw, 100);
+    check_touch(&touch_ccw);
+
     if (touch_ccw.result == held) {
 
         // If the motor is turning, stop it
@@ -599,40 +570,39 @@ void poll_turns()
 
 void poll_stop_go()
 {
-    check_touch(&touch_stopgo, 100);
+    check_touch(&touch_stopgo);
 
-    if (touch_stopgo.result
-        && touch_stopgo.fresh
-        && ctx.commutator_en) { // Touch or hold can turn off the motor
+    if (touch_stopgo.result && touch_stopgo.fresh) {
 
-        ctx.commutator_en = false;
-        save_required = true;
+        if (ctx.commutator_en) {
 
-        // Hard disable/reset on motor
-        hard_stop();
+            ctx.commutator_en = false;
+            save_required = true;
 
-        // Allow axel to turn freely
-        motor_driver_en(false);
+            // Hard disable/reset on motor
+            hard_stop();
 
-#ifdef DEBUG
-        Serial.print("Stop/Go (on to off): ");
-        Serial.println(touch_stopgo.result);
-#endif
-
-    } else if (touch_stopgo.result == held
-               && touch_stopgo.fresh
-               && !ctx.commutator_en) { // Long hold required turn on the motor after disable
-
-        ctx.commutator_en = true;
-        save_required = true;
-
-        // Enable driver
-        motor_driver_en(true);
+            // Allow axel to turn freely
+            motor_driver_en(false);
 
 #ifdef DEBUG
-        Serial.print("Stop/Go (off to on): ");
-        Serial.println(touch_stopgo.result);
+            Serial.print("Stop/Go (on to off): ");
+            Serial.println(touch_stopgo.result);
 #endif
+
+        } else if (!ctx.commutator_en) {
+
+            ctx.commutator_en = true;
+            save_required = true;
+
+            // Enable driver
+            motor_driver_en(true);
+
+#ifdef DEBUG
+            Serial.print("Stop/Go (off to on): ");
+            Serial.println(touch_stopgo.result);
+#endif
+        }
     }
 }
 
@@ -666,30 +636,6 @@ void loop()
 
     // Poll manual turn buttons
     poll_turns();
-
-#ifdef DEBUG
-
-    Serial.println("Stop/Go:");
-    Serial.print(touchRead(touch_stopgo.pin));
-    Serial.print("/");
-    Serial.println(touch_stopgo.cap_thresh);
-
-    Serial.println("CW:");
-    Serial.print(touchRead(touch_cw.pin));
-    Serial.print("/");
-    Serial.println(touch_cw.cap_thresh);
-
-    Serial.println("CCW:");
-    Serial.print(touchRead(touch_ccw.pin));
-    Serial.print("/");
-    Serial.println(touch_ccw.cap_thresh);
-
-    Serial.println("LED:");
-    Serial.print(touchRead(touch_mode.pin));
-    Serial.print("/");
-    Serial.println(touch_mode.cap_thresh);
-
-#endif
 
     // Memory pool for JSON object tree
     if (Serial.available()) {
