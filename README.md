@@ -1,4 +1,4 @@
-# Coaxial commutator for serialized headstages and miniscopes
+# Torque-free commutators for orientation-aware headstages and miniscopes
 The wide-spread availability of 6 degree of freedom pose tracking using
 internal-measurement units (IMUs) allows continuous monitoring of an animal's
 rotational state in an environment. This obviates the need for tether torque
@@ -11,19 +11,19 @@ flexible to translate rotational torque.
 
 ![Zero-torque coaxial commutator.](./resources/demo.gif)
 
-This commutator functions with coaxially-serialized head-borne recording
-systems that provide appropriate rotational tracking information. Currently
+This commutator functions with headstages and miniscopes that provide
+provide appropriate rotational tracking information. Currently
 supported devices are next-generation, serialized headstages and miniscopes
-such as [headstage-64](../headstage-64/README.md),
-[headstage-256](../headstage-256/README.md), and UCLA Miniscope Rev. 4.0f.
-However, this device operations completely independently from the head stage
+such as [ONIX headstages](https://open-ephys.github.io/onix-docs/index.html), 
+and UCLA Miniscope 4.0, and Open Ephys 3D low-profile SPI headstages.
+However, this device operations completely independently from the headstage
 itself, so can be used with any device that provides accurate, drift-free
 rotational state. It can even be used without an IMU, e.g. using video-based
 rotation tracking since its remote control interface is agnostic to how
 rotational measurements are taken.
 
 ## Features
-- High bandwidth link up to 18 GHz
+- Variants for high bandwidth RF links up to 18 GHz and low-bandwidth SPI cables
 - Optical table & 80/20 rail mountable
 - Remote control using JSON-encoded commands
 - Manual control using capacitive sense buttons
@@ -52,23 +52,23 @@ The LED tells you about the commutator state:
 1. Green (*Enabled*): commutator is enabled and permits both remote and manual
    (button) turn control. Buttons take precedence over remote commands.
 
-The LED can be turned off by pressing and holding it > 500 msec. It can be
-turned back on by pressing it.
+
 
 ### Buttons
 The front panel has four buttons.
 
-- __Stop/Go__: toggle commutator enable/disable.
+- __Enable/Disable__: toggle commutator enable/disable.
     - *Disabled* (LED is red): All motor output will halt instantly, and motor
       driver is powered down. Pressing directional buttons in the stopped state
       will not work. All target turns provided via remote calls will be
       cleared, such that re-enable the motor will not result in the commutator
-      re-engaging an old target position. In this state, pressing and holding
-      the Stop/Go button for > 0.5 second, or sending the approriate remote
-      command will enable the device.
+      re-engaging an old target position. In this state, pressing 
+      the Enable/Disable button, or sending the approriate remote
+      command, will enable the device.
     - *Enabled* (LED  green): When in the *enabled* state, the LED will be
       green and the motor can be turned via button presses or RPCs . In this
-      state, pressing the Stop/Go button will instantly disable the device.
+      state, pressing the Stop/Go button, or sending the approriate remote
+      command, will instantly disable the device.
 
 - __Directional__ (2x): Manually control the motor rotation in the
   direction indicated on each button when the commutator is *Enabled*. These
@@ -78,8 +78,8 @@ The front panel has four buttons.
   target position. Remote commands sent when a button is being pressed are
   ignored.
 
-- __LED__: pressing the LED turns it off (e.g for cases where it presents an
-  unwanted visual stimulus). Pressing it again turns it back on.
+- __LED__: pressing the LED will toggled on and off (e.g for cases where it presents an
+  unwanted visual stimulus).
 
 ### Remote control interface
 When manual buttons are not being pressed, the commutator accepts JSON-encoded
@@ -97,11 +97,11 @@ be sent:
 // 1. Turn LED off
 // 1. Set speed to 25 RPM
 // 2. Excecute 1.1 turns CC
-// Ordering of commands does not matter
+// Ordering of commands does not matter, it is determined by the firmware
 {led: false, speed: 25, turn : -1.1}
 ```
 The communator state can be read using the `{print:}` command  which will
-return a JSON object containing control and motor parameters.
+return a JSON object containing version, state, and motor parameters.
 
 ### Saving settings
 All control and speed parameters, whether changed via the remote or manual
@@ -110,7 +110,7 @@ device will start in the same state it was last used.
 
 ## Firmware
 The controller firmware is located [here](./firmware/commutator). It runs on a
-[Teensy 3.2](https://www.pjrc.com/store/teensy32.html). To compile
+[Teensy lc](https://www.pjrc.com/store/teensylc.html). To compile
 this firmware and program the microcontroller, you need the following
 dependencies:
 
@@ -148,10 +148,9 @@ components, including 3D-printed parts, can be found on the BOM.
 ### Electronics
 The board used to control the commutator consists of the following elements:
 
-1. [Teensy 3.2](https://www.pjrc.com/store/teensy32.html) for receiving
+1. [Teensy LC](https://www.pjrc.com/store/teensylc.html) for receiving
    commands and controlling all circuit elements.
-1. [TMC2130 Silent Stepper
-   Stick](https://www.watterott.com/en/SilentStepStick-TMC2130) for driving the
+1. [TMC2130 stepper driver](https://www.analog.com/media/en/technical-documentation/data-sheets/TMC2130_datasheet_rev1.15.pdf) for driving the
    motor.
 1. Super-capacitor charge system and step-up regulator for providing
    high-current capacity drive to the motor driver directly from USB.
@@ -159,25 +158,7 @@ The board used to control the commutator consists of the following elements:
 1. Capacitive touch sensors on the back side of the PCB that serve as buttons
    for manual commutator control
 
-Board designs are located [here](./control-board/). Board design file types are
-as follows:
-
-- `*.sch`: EAGLE schematic file
-- `*.brd`: EAGLE board file
-- `gerber/*.GKO`: board outline
-- `gerber/*.GTS`: top solder mask
-- `gerber/*.GBS`: bottom solder mask
-- `gerber/*.GTO`: top silk screen
-- `gerber/*.GBO`: bottom silk screen
-- `gerber/*.GTL`: top copper
-- `gerber/*.G2L`: inner layer 2 copper
-- `gerber/*.G3L`: inner layer 3 copper
-- `gerber/*.GBL`: bottom copper
-- `gerber/*.XLN`: drill hits and sizes
-- `stencil/*.CST`: solder stencil cutouts
-
-This is a 4-layer circuit board with very high-tolerance design rules (min
-trace space: 6 mil. 0.3 mm min hole size)
+Board designs and manufacturing files are located [here](./pcb/). 
 
 ## Hardware License
 This license pertains to documents in the `control-board`, `mechanical`, and
@@ -196,7 +177,7 @@ interested in commercially distributing this tool.
 This license pertains to documents in the source code in the `firmware`
 subdirectory.
 
-Copyright 2020 Jonathan P. Newman
+Copyright Jonathan P. Newman
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
