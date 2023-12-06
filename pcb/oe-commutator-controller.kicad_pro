@@ -45,7 +45,7 @@
         "silk_text_thickness": 0.15,
         "silk_text_upright": false,
         "zones": {
-          "min_clearance": 0.3
+          "min_clearance": 0.0
         }
       },
       "diff_pair_dimensions": [
@@ -56,7 +56,14 @@
         }
       ],
       "drc_exclusions": [
-        "unconnected_items|122175000|78700000|02bbd824-4534-4773-a547-e1964b6861e9|bdded8d8-1298-46cf-b9c5-fcf694ad1462"
+        "lib_footprint_issues|112676274|94947250|14805148-79c9-4993-9a7b-6e102ed1f4c9|00000000-0000-0000-0000-000000000000",
+        "lib_footprint_issues|120500000|145356525|28a1b8ee-db79-4a48-9a95-43a0ac7326fb|00000000-0000-0000-0000-000000000000",
+        "lib_footprint_issues|130892857|145169781|7d4c8a83-50ad-4773-9426-15a3892c1495|00000000-0000-0000-0000-000000000000",
+        "lib_footprint_issues|134291826|94941459|1c9380bb-d9cc-4367-8a23-51770815a563|00000000-0000-0000-0000-000000000000",
+        "lib_footprint_mismatch|132761625|103499999|9bd1e7ad-a499-4f7d-b32a-7efb39d657a6|00000000-0000-0000-0000-000000000000",
+        "lib_footprint_mismatch|132761625|92399999|90d818dc-4309-4564-9f84-4f08dd99b09e|00000000-0000-0000-0000-000000000000",
+        "starved_thermal|132905000|61860000|6d4132a5-432a-402a-96ec-63aebe079779|2ff3b3a4-44bd-45cf-a603-dddfd741ebc8|F.Cu",
+        "unconnected_items|107060000|74740000|bdded8d8-1298-46cf-b9c5-fcf694ad1462|d735adf7-74c4-44bc-977a-2e421177dba6"
       ],
       "meta": {
         "version": 2
