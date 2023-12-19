@@ -5,41 +5,50 @@
 #include <i2c_t3.h>
 #include <math.h>
 
-// Uncomment to continuously dump state over Serial
+/////////////////////////////////////////////////////////////////////////////////
+// OPTIONS
+/////////////////////////////////////////////////////////////////////////////////
+
+// Uncomment to continuously dump button press data over Serial
 //#define DEBUG
 
 // Firmware Version
-#define FIRMWARE_VER        "1.4.0"
+#define FIRMWARE_VER        "1.5.0"
 
 // Select a commutator type by uncommenting one of the following
 //#define COMMUTATOR_TYPE     "SPI Rev. A"
-//#define GEAR_RATIO          1.77777777778 // SPI
+//#define GEAR_RATIO          1.77777777778
 
-//#define COMMUTATOR_TYPE     "Single Channel Coax Rev. A"
-//#define GEAR_RATIO          2.0
+#define COMMUTATOR_TYPE     "Single Channel Coax Rev. A"
+#define GEAR_RATIO          2.0
 
-#define COMMUTATOR_TYPE     "Dual Channel Coax Rev. A"
-#define GEAR_RATIO          3.06666666667
+//#define COMMUTATOR_TYPE     "Dual Channel Coax Rev. A"
+//#define GEAR_RATIO          3.06666666667
 
-// Button read parameters
-#define TOUCH_MSEC          15
+/////////////////////////////////////////////////////////////////////////////////
+// CONSTANTS
+/////////////////////////////////////////////////////////////////////////////////
 
 // Stepper parameters
 #define DETENTS             200
-#define USTEPS_PER_STEP     16
+#define USTEPS_PER_STEP     8
 #define USTEPS_PER_REV      (DETENTS * USTEPS_PER_STEP)
 #define MAX_TURNS           (2147483647 / USTEPS_PER_REV / GEAR_RATIO)
 
+// Turn speed and acceleration
+#define SPEED_RPM           100
+#define ACCEL_RPMM          150
+#define MAX_SPEED_SPS       ((float)USTEPS_PER_REV * GEAR_RATIO * SPEED_RPM / 60.0)
+#define MAX_ACCEL_SPSS      ((float)USTEPS_PER_REV * GEAR_RATIO * ACCEL_RPMM / 60.0)
+
 // Motor driver parameters
-#define MOTOR_POLL_T_US     10
-#define MOTOR_SETTLE_US     80000
+#define MOTOR_POLL_T_US     20
 
 // Capacitive touch buttons
 #define CAP_TURN_CW         0
 #define CAP_MODE_SEL        1
 #define CAP_TURN_CCW        15
 #define CAP_STOP_GO         17
-#define CAP_DELTA           1.15 // Minimum fraction of nominal button capacitance indicating a "press"
 
 // Stepper driver pins
 #define MOT_DIR             14
@@ -82,13 +91,12 @@
 
 // Settings address start byte
 #define SETTINGS_ADDR_START 0
+#define CAP_ADDR_START      0x0F
 
 // Controller state
 struct Context {
     bool led_on = true;
     bool commutator_en = false;
-    float speed_rpm = 100;
-    float accel_rpmm = 200;
 };
 
 // Holds the current state
@@ -100,9 +108,6 @@ bool save_required = false;
 // Stepper motor
 AccelStepper motor(AccelStepper::DRIVER, MOT_STEP, MOT_DIR);
 double target_turns = 0;
-
-// Global timer
-elapsedMillis global_millis;
 
 // Motor update timer
 IntervalTimer mot_timer;
@@ -117,59 +122,44 @@ enum TouchState { untouched, held };
 
 struct TouchSensor {
 
-    // Given last_state and current check, what is the consecutive for the state
-    // of this touch sensor?
+    // Result
     TouchState result = untouched;
 
-    int pin = 0;
-    int cap_thresh = 0;
+    // Physical constants
+    const int pin = 0;
+
+    // Algorithm state
+    int last = 0;
+    float i = 0;
+    const int i_thresh = 400;
     bool fresh = true;
 };
 
-// Touch Sensors
-// NB: = {.pin = whatever} -> can't, compiler does not implement
-TouchSensor touch_cw;
-TouchSensor touch_ccw;
-TouchSensor touch_mode;
-TouchSensor touch_stopgo;
-
-void calibrate_touch(TouchSensor *sensor)
-{
-    global_millis = 0;
-    long long val = 0;
-    int k = 0;
-    while (global_millis < TOUCH_MSEC) {
-        val += touchRead(sensor->pin);
-        k++;
-    }
-
-    sensor->cap_thresh = (int)(val * CAP_DELTA / k);
-}
+// Touch Sensors with pre-measured estimates for capacitance of each button
+TouchSensor touch_cw {.pin = CAP_TURN_CW, .last = 12000};
+TouchSensor touch_ccw {.pin = CAP_TURN_CCW, .last = 12100};
+TouchSensor touch_mode {.pin = CAP_MODE_SEL, .last = 2700};
+TouchSensor touch_stopgo {.pin = CAP_STOP_GO, .last = 10700};
 
 void check_touch(TouchSensor *sensor)
 {
-    global_millis = 0;
-    long long fingy = 0;
-    int k = 0;
+    int m = touchRead(sensor->pin);
+    int d =  m - sensor->last;
+    sensor->last = m;
+    auto last_state = sensor->result;
 
-    // Check the pad for TOUCH_MSEC to get consensus on fingy presence
-    while (global_millis < TOUCH_MSEC) {
-        fingy += touchRead(sensor->pin);
-        k++;
+    sensor->i += (float)d;
+
+    if (sensor->i > sensor->i_thresh)
+    {
+        //sensor->i *= 0.999;
+        sensor->result = held;
+    } else {
+        sensor->i *=  0.9;
+        sensor->result = untouched;
     }
 
-    TouchState last_state = sensor->result;
-    sensor->result = (fingy / k > sensor->cap_thresh) ? held : untouched;
     sensor->fresh = last_state != sensor->result;
-
-#ifdef DEBUG
-    Serial.print(sensor->pin);
-    Serial.print(": ");
-    Serial.print(fingy / k);
-    Serial.print("/");
-    Serial.println(sensor->cap_thresh);
-#endif
-
 }
 
 uint8_t tmc_write(uint8_t cmd, uint32_t data)
@@ -221,21 +211,21 @@ void load_settings()
     if (good_settings != 0x12)
         return;
 
-    EEPROM.get(addr += sizeof(Context), ctx);
+    EEPROM.get(addr += sizeof(int), ctx);
 }
 
+// Save enable and LED state
 void save_settings()
 {
     int addr = SETTINGS_ADDR_START;
     EEPROM.put(addr, 0x12); // good settings flag
-    EEPROM.put(addr += sizeof(Context), ctx);
+    EEPROM.put(addr += sizeof(int), ctx);
 }
 
 // Motor target update. We integrate turns in the target position and apply to
 // motor's motion.
 void turn_commutator(double turns)
 {
-
     // Invalid request
     if (abs(turns) > MAX_TURNS)
         return; // Failure, cant turn this far
@@ -261,8 +251,7 @@ void hard_stop()
     motor.runToPosition();
     motor.setCurrentPosition(0);
     target_turns = 0.0;
-    update_motor_accel();
-
+    motor.setAcceleration(MAX_ACCEL_SPSS);
 }
 
 void soft_stop()
@@ -301,19 +290,6 @@ void update_rgb()
     }
 
     set_rgb_color(1, 20, 7);
-}
-
-void setup_cap_touch()
-{
-    touch_cw.pin = CAP_TURN_CW;
-    touch_ccw.pin = CAP_TURN_CCW;
-    touch_mode.pin = CAP_MODE_SEL;
-    touch_stopgo.pin = CAP_STOP_GO;
-
-    calibrate_touch(&touch_cw);
-    calibrate_touch(&touch_ccw);
-    calibrate_touch(&touch_mode);
-    calibrate_touch(&touch_stopgo);
 }
 
 void setup_rgb()
@@ -395,41 +371,41 @@ void setup_motor()
     // IHOLD = 0x0A
     // IRUN = 0x1F (Max)
     // IHOLDDELAY = 0x06
-    tmc_write(WRITE_FLAG | REG_IHOLD_IRUN, 0x00041F01UL);
+    tmc_write(WRITE_FLAG | REG_IHOLD_IRUN, 0b01100001111100011111UL); // 0x00_04_1F_UL);
 
     switch (USTEPS_PER_STEP) {
         case 1:
-            tmc_write(WRITE_FLAG|REG_CHOPCONF,   0x08008008UL); //  1 microsteps,
+            tmc_write(WRITE_FLAG | REG_CHOPCONF, 0x08008008UL); //  1 microsteps,
             break;
         case 2:
-            tmc_write(WRITE_FLAG|REG_CHOPCONF,   0x07008008UL); //  2 microsteps,
+            tmc_write(WRITE_FLAG | REG_CHOPCONF, 0x07008008UL); //  2 microsteps,
             break;
         case 4:
-            tmc_write(WRITE_FLAG|REG_CHOPCONF,   0x06008008UL); //  4 microsteps,
+            tmc_write(WRITE_FLAG | REG_CHOPCONF, 0x06008008UL); //  4 microsteps,
             break;
         case 8:
-            tmc_write(WRITE_FLAG|REG_CHOPCONF,   0x05008008UL); //  8 microsteps,
+            tmc_write(WRITE_FLAG | REG_CHOPCONF, 0x05008008UL); //  8 microsteps,
             break;
         case 16:
-            tmc_write(WRITE_FLAG|REG_CHOPCONF,   0x04008008UL); // 16 microsteps,
+            tmc_write(WRITE_FLAG | REG_CHOPCONF, 0x04008008UL); // 16 microsteps,
             break;
         case 32:
-            tmc_write(WRITE_FLAG|REG_CHOPCONF,   0x03008008UL); // 32 microsteps,
+            tmc_write(WRITE_FLAG | REG_CHOPCONF, 0x03008008UL); // 32 microsteps,
             break;
         case 64:
             tmc_write(WRITE_FLAG | REG_CHOPCONF, 0x02008008UL); // 64 microsteps,
             break;
         case 128:
-            tmc_write(WRITE_FLAG|REG_CHOPCONF,   0x01008008UL); //128 microsteps,
+            tmc_write(WRITE_FLAG | REG_CHOPCONF, 0x01008008UL); //128 microsteps,
             break;
         default:
-            tmc_write(WRITE_FLAG|REG_CHOPCONF,   0x08008008ul); //  1 microsteps,
+            tmc_write(WRITE_FLAG | REG_CHOPCONF, 0x08008008ul); //  1 microsteps,
             break;
     }
 
-    // Setup motor driver
-    update_motor_speed();
-    update_motor_accel();
+    // Set speed and accel
+    motor.setMaxSpeed(MAX_SPEED_SPS);
+    motor.setAcceleration(MAX_ACCEL_SPSS);
 
     // Minimum pulse width
     motor.setMinPulseWidth(3);
@@ -486,18 +462,6 @@ inline float charge_current()
     return CODE_TO_AMPS * analogRead(CHARGE_CURR);
 }
 
-void update_motor_speed()
-{
-    auto max_speed = (float)USTEPS_PER_REV * GEAR_RATIO * ctx.speed_rpm / 60.0;
-    motor.setMaxSpeed(max_speed);
-}
-
-void update_motor_accel()
-{
-    auto a = (float)USTEPS_PER_REV * GEAR_RATIO * ctx.accel_rpmm / 60.0;
-    motor.setAcceleration(a);
-}
-
 void poll_led()
 {
     // Poll the mode button
@@ -511,15 +475,15 @@ void poll_led()
 
 void poll_turns()
 {
-    // If the commutator is not enabled, or under pure remote control, then
-    // these buttons can't do anything
+    // Poll the buttons to update their state
+    check_touch(&touch_cw);
+    check_touch(&touch_ccw);
+
+    // If the commutator is not enabled then these buttons can't do anything
     if (!ctx.commutator_en)
         return;
 
-    // Poll the cw button
-    check_touch(&touch_cw);
-
-    if (touch_cw.result) {
+    if (touch_cw.result && touch_cw.fresh) {
 
         // If the motor is turning, stop it
         soft_stop();
@@ -527,25 +491,12 @@ void poll_turns()
         // Set huge target
         motor.move(10e6);
 
-        while (touch_cw.result)
-            check_touch(&touch_cw);
+    } else if (touch_cw.fresh) {
 
-        // Set all targets to 0 because we are overriding
-        // and Disable driver
+        // Button released
         soft_stop();
 
-
-#ifdef DEBUG
-        Serial.println("CW: held\n");
-#endif
-
-        return;
-    }
-
-    // Poll the ccw button
-    check_touch(&touch_ccw);
-
-    if (touch_ccw.result == held) {
+    } else if (touch_ccw.result == held && touch_ccw.fresh) {
 
         // If the motor is turning, stop it
         soft_stop();
@@ -553,18 +504,10 @@ void poll_turns()
         // Set huge targetr
         motor.move(-10e6);
 
-        while (touch_ccw.result == held)
-            check_touch(&touch_ccw);
+    } else if (touch_ccw.fresh) {
 
-        // Set all targets to 0 because we are overriding
-        // and Disable driver
+        // Button released
         soft_stop();
-
-#ifdef DEBUG
-        Serial.println("CCW: held\n");
-#endif
-
-        return;
     }
 }
 
@@ -585,11 +528,6 @@ void poll_stop_go()
             // Allow axel to turn freely
             motor_driver_en(false);
 
-#ifdef DEBUG
-            Serial.print("Stop/Go (on to off): ");
-            Serial.println(touch_stopgo.result);
-#endif
-
         } else if (!ctx.commutator_en) {
 
             ctx.commutator_en = true;
@@ -597,11 +535,6 @@ void poll_stop_go()
 
             // Enable driver
             motor_driver_en(true);
-
-#ifdef DEBUG
-            Serial.print("Stop/Go (off to on): ");
-            Serial.println(touch_stopgo.result);
-#endif
         }
     }
 }
@@ -622,12 +555,30 @@ void setup()
     // Setup each block of the board
     setup_rgb(); // Must come first, used by all that follow
     setup_power();
-    setup_cap_touch();
+    //setup_touch();
     setup_motor();
+
+    // Set RGB once
+    update_rgb();
 }
 
 void loop()
 {
+
+#ifdef DEBUG
+
+    Serial.print(touch_cw.i_thresh);
+    Serial.print(",");
+    Serial.print(touch_cw.i);
+    Serial.print(",");
+    Serial.print(touch_ccw.i);
+    Serial.print(",");
+    Serial.print(touch_mode.i);
+    Serial.print(",");
+    Serial.println(touch_stopgo.i);
+
+#endif
+
     // Poll the stop/go button and update on change
     poll_stop_go();
 
@@ -658,34 +609,6 @@ void loop()
                 save_required = true;
             }
 
-            if (root.containsKey("speed")) {
-
-                auto rpm = root["speed"].as<float>();
-
-                // Bound speed
-                if (rpm > 0 && rpm <= 1000)
-                    ctx.speed_rpm = rpm;
-                else if (rpm > 1000)
-                    ctx.speed_rpm = 1000;
-
-                update_motor_speed();
-                save_required = true;
-            }
-
-            if (root.containsKey("accel")) {
-
-                auto rpmm = root["accel"].as<float>();
-
-                // Bound speed
-                if (rpmm > 0 && rpmm <= 1000)
-                    ctx.accel_rpmm = rpmm;
-                else if (rpmm > 1000)
-                    ctx.accel_rpmm = 1000;
-
-                update_motor_accel();
-                save_required = true;
-            }
-
             if (root.containsKey("led")) {
                 ctx.led_on = root["led"].as<bool>();
                 save_required = true;
@@ -704,8 +627,6 @@ void loop()
                 doc["firmware"] = FIRMWARE_VER;
                 doc["led"] = ctx.led_on;
                 doc["enable"] = ctx.commutator_en;
-                doc["speed"] = ctx.speed_rpm;
-                doc["accel"] = ctx.accel_rpmm;
                 doc["steps_to_go"] = motor.distanceToGo();
                 doc["target_steps"] = motor.targetPosition();
                 doc["target_turns"] = target_turns;
@@ -719,10 +640,10 @@ void loop()
         }
     }
 
-    // Update rgb
-    update_rgb();
-
     if (save_required) {
+
+      // Update rgb
+       update_rgb();
        save_settings();
        save_required = false;
     }
