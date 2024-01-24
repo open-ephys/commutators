@@ -9,13 +9,17 @@
 // OPTIONS
 /////////////////////////////////////////////////////////////////////////////////
 
-// Uncomment to continuously dump button press data over Serial
-//#define DEBUG
-
 // Firmware Version
-#define FIRMWARE_VER        "1.5.0"
+#define FIRMWARE_VER        "1.5.1"
 
-// Select a commutator type by uncommenting one of the following
+// 1. Uncomment to continuously dump button press data over Serial
+#define DEBUG
+
+// 2. Select teensy type
+#define TEENSYLC
+//#define TEENSY32
+
+// 3. Select a commutator type by uncommenting one of the following
 //#define COMMUTATOR_TYPE     "SPI Rev. A"
 //#define GEAR_RATIO          1.77777777778
 
@@ -95,15 +99,15 @@
 
 // Controller state
 struct Context {
-    bool led_on = true;
-    bool commutator_en = false;
+    int led_on = 1; // Using a bool results in extemely bizarre behavior
+    int commutator_en = 1;  // Using a bool results in extemely bizarre behavior
 };
 
 // Holds the current state
 Context ctx;
 
 // Save settings flag
-bool save_required = false;
+int save_required = 0;
 
 // Stepper motor
 AccelStepper motor(AccelStepper::DRIVER, MOT_STEP, MOT_DIR);
@@ -111,10 +115,6 @@ double target_turns = 0;
 
 // Motor update timer
 IntervalTimer mot_timer;
-
-// Triggered in case of under current from host
-// TODO: use somehow
-// volatile bool power_failure = false;
 
 // I was touched..., by the power..., on my unit..., in broooooooooooad
 // daylight
@@ -132,14 +132,24 @@ struct TouchSensor {
     int last = 0;
     float i = 0;
     const int i_thresh = 400;
-    bool fresh = true;
+    int d_thresh = 0;
+    int fresh = 1;
 };
 
 // Touch Sensors with pre-measured estimates for capacitance of each button
-TouchSensor touch_cw {.pin = CAP_TURN_CW, .last = 12000};
-TouchSensor touch_ccw {.pin = CAP_TURN_CCW, .last = 12100};
-TouchSensor touch_mode {.pin = CAP_MODE_SEL, .last = 2700};
-TouchSensor touch_stopgo {.pin = CAP_STOP_GO, .last = 10700};
+#ifdef TEENSYLC
+TouchSensor touch_cw {.pin = CAP_TURN_CW, .last = 12000, .d_thresh = 8};
+TouchSensor touch_ccw {.pin = CAP_TURN_CCW, .last = 12100, .d_thresh = 8};
+TouchSensor touch_mode {.pin = CAP_MODE_SEL, .last = 2700, .d_thresh = 2};
+TouchSensor touch_stopgo {.pin = CAP_STOP_GO, .last = 10700, .d_thresh = 10};
+#endif
+
+#ifdef TEENSY32
+TouchSensor touch_cw {.pin = CAP_TURN_CW, .last = 12000, .d_thresh = 15};
+TouchSensor touch_ccw {.pin = CAP_TURN_CCW, .last = 12100, .d_thresh = 15};
+TouchSensor touch_mode {.pin = CAP_MODE_SEL, .last = 2700, .d_thresh = 3};
+TouchSensor touch_stopgo {.pin = CAP_STOP_GO, .last = 10700, .d_thresh = 15};
+#endif
 
 void check_touch(TouchSensor *sensor)
 {
@@ -148,11 +158,11 @@ void check_touch(TouchSensor *sensor)
     sensor->last = m;
     auto last_state = sensor->result;
 
-    sensor->i += (float)d;
+    if (abs(d) > sensor->d_thresh)
+        sensor->i += (float)d;
 
     if (sensor->i > sensor->i_thresh)
     {
-        //sensor->i *= 0.999;
         sensor->result = held;
     } else {
         sensor->i *=  0.9;
@@ -299,7 +309,6 @@ void setup_rgb()
     Wire.setDefaultTimeout(200000); // 200ms
 
     // Enable LED current driver
-
     digitalWriteFast(IS31_SHDN, HIGH);
     delay(1);
 
@@ -336,7 +345,7 @@ void setup_io()
     pinMode(IS31_SHDN, OUTPUT);
 }
 
-inline void motor_driver_en(bool enable)
+inline void motor_driver_en(int enable)
 {
     digitalWriteFast(MOT_CFG6_EN, enable ? LOW : HIGH); // Inactivate driver (LOW active)
 }
@@ -344,7 +353,7 @@ inline void motor_driver_en(bool enable)
 void setup_motor()
 {
     // Default state
-    motor_driver_en(false);
+    motor_driver_en(0);
     digitalWriteFast(MOT_DIR, LOW); // LOW or HIGH
     digitalWriteFast(MOT_STEP, LOW);
 
@@ -414,7 +423,7 @@ void setup_motor()
     mot_timer.begin(run_motor_isr, MOTOR_POLL_T_US);
 
     // Activate motor
-    motor_driver_en(true);
+    motor_driver_en(1);
 }
 
 void run_motor_isr()
@@ -423,11 +432,6 @@ void run_motor_isr()
         motor.run();
     }
 }
-
-// void power_fail_isr()
-// {
-//     power_failure = true;
-// }
 
 void setup_power()
 {
@@ -445,10 +449,8 @@ void setup_power()
     // NB: Set 2.7V across each super cap
     digitalWriteFast(VMID_SEL, HIGH);
 
-    // attachInterrupt(nPOW_FAIL, power_fail_isr, FALLING);
-
     // Wait for charge current stabilize and breath LED in meantime
-    while (charge_current() >= CHARGE_CURR_THRESH)
+    while (digitalRead(nPOW_FAIL) == LOW)
       delay(10);
 
     Wire.beginTransmission(IS31_ADDR);
@@ -468,7 +470,7 @@ void poll_led()
     check_touch(&touch_mode);
 
     if (touch_mode.result && touch_mode.fresh) { // If touched and fresh, toggle LED
-        save_required = true;
+        save_required = 1;
         ctx.led_on = !ctx.led_on;
     }
 }
@@ -478,7 +480,7 @@ void poll_turns()
     // Poll the buttons to update their state
     check_touch(&touch_cw);
     check_touch(&touch_ccw);
-
+    
     // If the commutator is not enabled then these buttons can't do anything
     if (!ctx.commutator_en)
         return;
@@ -519,22 +521,22 @@ void poll_stop_go()
 
         if (ctx.commutator_en) {
 
-            ctx.commutator_en = false;
-            save_required = true;
+            ctx.commutator_en = 0;
+            save_required = 1;
 
             // Hard disable/reset on motor
             hard_stop();
 
             // Allow axel to turn freely
-            motor_driver_en(false);
+            motor_driver_en(0);
 
         } else if (!ctx.commutator_en) {
 
-            ctx.commutator_en = true;
-            save_required = true;
+            ctx.commutator_en = 1;
+            save_required = 1;
 
             // Enable driver
-            motor_driver_en(true);
+            motor_driver_en(1);
         }
     }
 }
@@ -550,12 +552,11 @@ void setup()
     load_settings();
 
     // Shutdown the motor driver so that it does not the supercap charge current
-    motor_driver_en(false);
+    motor_driver_en(0);
 
     // Setup each block of the board
     setup_rgb(); // Must come first, used by all that follow
     setup_power();
-    //setup_touch();
     setup_motor();
 
     // Set RGB once
@@ -601,17 +602,17 @@ void loop()
                 if (!ctx.commutator_en)
                 {
                     hard_stop();
-                    motor_driver_en(false);
+                    motor_driver_en(0);
                 } else {
-                    motor_driver_en(true);
+                    motor_driver_en(1);
                 }
 
-                save_required = true;
+                save_required = 1;
             }
 
             if (root.containsKey("led")) {
                 ctx.led_on = root["led"].as<bool>();
-                save_required = true;
+                save_required = 1;
             }
 
             if (root.containsKey("turn") && ctx.commutator_en) {
@@ -625,6 +626,12 @@ void loop()
 
                 doc["type"] = COMMUTATOR_TYPE;
                 doc["firmware"] = FIRMWARE_VER;
+#ifdef TEENSYLC
+                doc["teensy"] = "lc";
+#endif
+#ifdef TEENSY32
+                doc["teensy"] = "3.2";
+#endif            
                 doc["led"] = ctx.led_on;
                 doc["enable"] = ctx.commutator_en;
                 doc["steps_to_go"] = motor.distanceToGo();
@@ -645,6 +652,6 @@ void loop()
       // Update rgb
        update_rgb();
        save_settings();
-       save_required = false;
+       save_required = 0;
     }
 }
