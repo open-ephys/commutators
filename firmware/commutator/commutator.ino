@@ -10,10 +10,10 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 // Firmware Version
-#define FIRMWARE_VER        "1.5.1"
+#define FIRMWARE_VER        "1.6.0"
 
 // 1. Uncomment to continuously dump button press data over Serial
-#define DEBUG
+//#define DEBUG
 
 // 2. Select teensy type
 #define TEENSYLC
@@ -616,7 +616,9 @@ void loop()
             }
 
             if (root.containsKey("turn") && ctx.commutator_en) {
-                turn_commutator(root["turn"].as<double>());
+                double turns = root["turn"].as<double>();
+                if (!isnan(turns))
+                  turn_commutator(turns);  
             }
 
             if (root.containsKey("print")) {
