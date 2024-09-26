@@ -79,6 +79,7 @@
         "footprint_type_mismatch": "ignore",
         "hole_clearance": "error",
         "hole_near_hole": "error",
+        "holes_co_located": "warning",
         "invalid_outline": "error",
         "isolated_copper": "warning",
         "item_on_disabled_layer": "error",
@@ -506,6 +507,7 @@
   },
   "schematic": {
     "annotate_start_num": 0,
+    "bom_export_filename": "",
     "bom_fmt_presets": [],
     "bom_fmt_settings": {
       "field_delimiter": ",",
@@ -609,27 +611,27 @@
     ],
     [
       "f332ab09-c494-4f8f-98bf-7facb28de9af",
-      "mcu-flash"
+      "MCU"
     ],
     [
       "884b71f2-a75a-40cc-a0f7-e858347b8f6c",
-      "usb-power"
+      "USB"
     ],
     [
       "f9d22632-be45-4b30-a0f8-f307d3c7c772",
-      "cap-touch-sensor"
+      "Touch Sensors"
     ],
     [
       "0bac2e8b-d578-4516-b05c-9606c956906b",
-      "cap-charger"
+      "Supercap Charger"
     ],
     [
       "8643cb4c-0280-4c6b-b319-4ef16f8d0a00",
-      "motor-driver"
+      "Motor Driver"
     ],
     [
       "95463fce-2507-46a3-acfc-459accd379fb",
-      "rgb-driver"
+      "RGB Driver"
     ]
   ],
   "text_variables": {}

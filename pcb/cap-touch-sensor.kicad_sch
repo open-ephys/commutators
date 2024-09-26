@@ -4,6 +4,11 @@
 	(generator_version "8.0")
 	(uuid "73cff681-9f5c-48c7-b08c-ea9778230384")
 	(paper "A5")
+	(title_block
+		(title "Open Ephys Commutator Controller")
+		(rev "D")
+		(company "Open Ephys, Inc.")
+	)
 	(lib_symbols
 		(symbol "Device:C"
 			(pin_numbers hide)

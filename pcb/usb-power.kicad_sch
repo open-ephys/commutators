@@ -4,6 +4,11 @@
 	(generator_version "8.0")
 	(uuid "615a1778-16ff-41bc-92e6-bd3185e4cff3")
 	(paper "A5")
+	(title_block
+		(title "Open Ephys Commutator Controller")
+		(rev "D")
+		(company "Open Ephys, Inc.")
+	)
 	(lib_symbols
 		(symbol "Connector:USB_C_Receptacle_USB2.0_16P"
 			(pin_names
@@ -2566,22 +2571,22 @@
 		(dnp no)
 		(uuid "5668fbd5-710b-4450-a690-5831ce8e354c")
 		(property "Reference" "J2"
-			(at 57.15 86.36 0)
+			(at 57.15 83.312 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
 			)
 		)
-		(property "Value" "USB4105"
-			(at 57.15 83.82 0)
+		(property "Value" "USB4110-GF-A"
+			(at 57.15 85.852 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
 			)
 		)
-		(property "Footprint" "Connector_USB:USB_C_Receptacle_GCT_USB4105-xx-A_16P_TopMnt_Horizontal"
+		(property "Footprint" "Connector_USB:USB_C_Receptacle_GCT_USB4110"
 			(at 60.96 63.5 0)
 			(effects
 				(font

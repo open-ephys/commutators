@@ -4,6 +4,11 @@
 	(generator_version "8.0")
 	(uuid "70dd564e-4c2f-481c-b238-4ad15af4668b")
 	(paper "A4")
+	(title_block
+		(title "Open Ephys Commutator Controller")
+		(rev "D")
+		(company "Open Ephys, Inc.")
+	)
 	(lib_symbols
 		(symbol "Connector:TestPoint"
 			(pin_numbers hide)

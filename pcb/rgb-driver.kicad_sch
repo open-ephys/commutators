@@ -4,6 +4,11 @@
 	(generator_version "8.0")
 	(uuid "0093db1b-1a45-47f6-8fea-b1d0737ac3f8")
 	(paper "A5")
+	(title_block
+		(title "Open Ephys Commutator Controller")
+		(rev "D")
+		(company "Open Ephys, Inc.")
+	)
 	(lib_symbols
 		(symbol "Device:C"
 			(pin_numbers hide)
@@ -2582,10 +2587,9 @@
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
-		(fields_autoplaced yes)
 		(uuid "f8e039fa-5f6c-417a-84d5-43b0cc4d4c1f")
 		(property "Reference" "U8"
-			(at 88.9 46.99 0)
+			(at 88.9 48.006 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2593,7 +2597,7 @@
 			)
 		)
 		(property "Value" "IS31FL3193"
-			(at 88.9 49.53 0)
+			(at 88.9 50.546 0)
 			(effects
 				(font
 					(size 1.27 1.27)
