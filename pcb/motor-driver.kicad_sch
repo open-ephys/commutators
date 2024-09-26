@@ -3530,7 +3530,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "open-ephys:MOLEX_1719730004_1x04_P2.54mm_Vert_Lock"
+		(property "Footprint" "oe:MOLEX_1719730004_1x04_P2.54mm_Vert_Lock"
 			(at 176.53 96.52 0)
 			(effects
 				(font
