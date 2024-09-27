@@ -2400,7 +2400,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "open-ephys:SUNLED_PLCC4-INV_3.2x2.8x1.9mm"
+		(property "Footprint" "oe:SUNLED_PLCC4-INV_3.2x2.8x1.9mm"
 			(at 66.04 44.45 0)
 			(effects
 				(font

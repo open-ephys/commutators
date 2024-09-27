@@ -786,16 +786,6 @@
 	)
 	(wire
 		(pts
-			(xy 78.74 59.69) (xy 86.36 59.69)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "164a326c-3c83-4e8a-a985-a23a64c85502")
-	)
-	(wire
-		(pts
 			(xy 118.11 67.31) (xy 116.84 67.31)
 		)
 		(stroke
@@ -823,6 +813,16 @@
 			(type default)
 		)
 		(uuid "2c5ffab8-640d-446a-84e3-e9ef70b45c1b")
+	)
+	(wire
+		(pts
+			(xy 78.74 62.23) (xy 86.36 62.23)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4ae63a46-0470-46ad-9302-caf00e7283f5")
 	)
 	(wire
 		(pts
@@ -856,16 +856,6 @@
 	)
 	(wire
 		(pts
-			(xy 78.74 64.77) (xy 86.36 64.77)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "a62d8a54-ce42-40ee-abb5-a684c2b9d6b4")
-	)
-	(wire
-		(pts
 			(xy 118.11 59.69) (xy 116.84 59.69)
 		)
 		(stroke
@@ -886,16 +876,6 @@
 	)
 	(wire
 		(pts
-			(xy 78.74 62.23) (xy 86.36 62.23)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "ae215db1-4cbe-4e4c-a063-0b25883e1240")
-	)
-	(wire
-		(pts
 			(xy 101.6 77.47) (xy 101.6 78.74)
 		)
 		(stroke
@@ -904,29 +884,27 @@
 		)
 		(uuid "c5e1739f-9b7c-4a27-87c9-a8fc0069ddae")
 	)
-	(label "STOP"
-		(at 78.74 64.77 0)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
+	(wire
+		(pts
+			(xy 78.74 59.69) (xy 86.36 59.69)
 		)
-		(uuid "51555ae7-567e-4e46-b529-e7ce9395114f")
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "dffac61f-31b7-4a1b-abb9-9859f6a926ed")
+	)
+	(wire
+		(pts
+			(xy 78.74 64.77) (xy 86.36 64.77)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ff378b2d-0208-4369-bd4e-dc0be4de946f")
 	)
 	(label "MODE"
-		(at 78.74 59.69 0)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "8bc451a8-f9d3-42f8-ae3f-3bacf9cef0d0")
-	)
-	(label "CW"
 		(at 78.74 62.23 0)
 		(fields_autoplaced yes)
 		(effects
@@ -935,7 +913,29 @@
 			)
 			(justify left bottom)
 		)
-		(uuid "c1f7ec6f-af2d-4dbf-a111-584e59929592")
+		(uuid "553e50ef-d582-4269-ace0-6c73d05c6a98")
+	)
+	(label "CW"
+		(at 78.74 64.77 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "791189c6-63bc-47ad-9f1f-94ca5822d022")
+	)
+	(label "STOP"
+		(at 78.74 59.69 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "8d7a064b-0fac-4a92-9ace-ec3435fb833b")
 	)
 	(label "CCW"
 		(at 78.74 57.15 0)
@@ -983,71 +983,6 @@
 			(justify left)
 		)
 		(uuid "fe18aa72-734b-46ed-8e0e-4c16c49c809d")
-	)
-	(symbol
-		(lib_id "oe:TOUCH")
-		(at 76.2 64.77 90)
-		(mirror x)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(uuid "02d06391-e9c3-4a57-97ac-0fc6ef4fcfa0")
-		(property "Reference" "S4"
-			(at 72.136 64.516 90)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "~"
-			(at 74.93 62.23 90)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" "oe:Touch_Center_2mm"
-			(at 76.2 64.77 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" ""
-			(at 76.2 64.77 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" ""
-			(at 76.2 64.77 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "1"
-			(uuid "52200d9d-39e9-4398-92f8-3a912b4ffbb5")
-		)
-		(instances
-			(project "oe-commutator-controller"
-				(path "/f8e1d654-dc44-4fb2-953c-f5982945ff40/f9d22632-be45-4b30-a0f8-f307d3c7c772"
-					(reference "S4")
-					(unit 1)
-				)
-			)
-		)
 	)
 	(symbol
 		(lib_id "Device:C")
@@ -1121,71 +1056,6 @@
 	)
 	(symbol
 		(lib_id "oe:TOUCH")
-		(at 76.2 57.15 90)
-		(mirror x)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(uuid "31070f44-3480-45f3-8a2f-3a2ed7880ffa")
-		(property "Reference" "S1"
-			(at 72.136 57.15 90)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "~"
-			(at 74.93 54.61 90)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" "oe:Touch_Center_2mm"
-			(at 76.2 57.15 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" ""
-			(at 76.2 57.15 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" ""
-			(at 76.2 57.15 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "1"
-			(uuid "ab241a3a-0ef5-4c90-8118-490410809d3c")
-		)
-		(instances
-			(project "oe-commutator-controller"
-				(path "/f8e1d654-dc44-4fb2-953c-f5982945ff40/f9d22632-be45-4b30-a0f8-f307d3c7c772"
-					(reference "S1")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "oe:TOUCH")
 		(at 76.2 59.69 90)
 		(mirror x)
 		(unit 1)
@@ -1193,9 +1063,9 @@
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
-		(uuid "49d351e5-0311-4bb1-9b12-5d6ec70df11e")
-		(property "Reference" "S2"
-			(at 72.136 59.69 90)
+		(uuid "5733bf26-e061-4f21-a5fd-dc6a85e653ce")
+		(property "Reference" "S4"
+			(at 72.136 59.436 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -1238,7 +1108,72 @@
 			)
 		)
 		(pin "1"
-			(uuid "94fea4d3-26f0-41ea-a25b-595dfd663df7")
+			(uuid "e28f69f3-8db3-443c-910b-af5457c83bcd")
+		)
+		(instances
+			(project "oe-commutator-controller"
+				(path "/f8e1d654-dc44-4fb2-953c-f5982945ff40/f9d22632-be45-4b30-a0f8-f307d3c7c772"
+					(reference "S4")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "oe:TOUCH")
+		(at 76.2 62.23 90)
+		(mirror x)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "69110f97-bcd1-4b24-972c-14b58868fbc8")
+		(property "Reference" "S2"
+			(at 72.136 62.23 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "~"
+			(at 74.93 59.69 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "oe:Touch_Center_2mm"
+			(at 76.2 62.23 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 76.2 62.23 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 76.2 62.23 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "8a66a0e5-314d-4546-8000-3174db08d29d")
 		)
 		(instances
 			(project "oe-commutator-controller"
@@ -1318,16 +1253,16 @@
 	)
 	(symbol
 		(lib_id "oe:TOUCH")
-		(at 76.2 62.23 90)
+		(at 76.2 57.15 90)
 		(mirror x)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
-		(uuid "77b1e490-e78b-4ad0-9f92-90f0282ffcff")
+		(uuid "7b5a4b59-8071-484d-97b1-685ebcfdde38")
 		(property "Reference" "S3"
-			(at 72.136 62.23 90)
+			(at 72.136 57.15 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -1335,7 +1270,7 @@
 			)
 		)
 		(property "Value" "~"
-			(at 74.93 59.69 90)
+			(at 74.93 54.61 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -1343,7 +1278,7 @@
 			)
 		)
 		(property "Footprint" "oe:Touch_Center_2mm"
-			(at 76.2 62.23 0)
+			(at 76.2 57.15 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -1352,7 +1287,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 76.2 62.23 0)
+			(at 76.2 57.15 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -1361,7 +1296,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 76.2 62.23 0)
+			(at 76.2 57.15 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -1370,7 +1305,7 @@
 			)
 		)
 		(pin "1"
-			(uuid "8d29fdf1-1435-49e9-9367-ecf70859032e")
+			(uuid "9d6520e3-d2cf-4ca6-8477-ccb7367805be")
 		)
 		(instances
 			(project "oe-commutator-controller"
@@ -1606,6 +1541,71 @@
 			(project "oe-commutator-controller"
 				(path "/f8e1d654-dc44-4fb2-953c-f5982945ff40/f9d22632-be45-4b30-a0f8-f307d3c7c772"
 					(reference "#PWR035")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "oe:TOUCH")
+		(at 76.2 64.77 90)
+		(mirror x)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "fe63f348-92af-4163-82d2-8773a47cd077")
+		(property "Reference" "S1"
+			(at 72.136 64.77 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "~"
+			(at 74.93 62.23 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "oe:Touch_Center_2mm"
+			(at 76.2 64.77 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 76.2 64.77 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 76.2 64.77 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "fc2dfb58-6582-4512-a327-1aad044dd99f")
+		)
+		(instances
+			(project "oe-commutator-controller"
+				(path "/f8e1d654-dc44-4fb2-953c-f5982945ff40/f9d22632-be45-4b30-a0f8-f307d3c7c772"
+					(reference "S1")
 					(unit 1)
 				)
 			)
