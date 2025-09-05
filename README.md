@@ -1,3 +1,14 @@
+> [!Important]  
+> This repository has been split into dedicated repositories for each design:
+>
+>  - https://github.com/open-ephys/commutator-coax
+>  - https://github.com/open-ephys/commutator-spi
+>  - https://github.com/open-ephys/commutator-dual
+>  - etc.
+>
+> Future commutator designs, issue tracking, etc. will take place in those repositories.
+> This repository is deprecated.
+
 # Torque-free commutators for orientation-aware headstages and miniscopes
 The wide-spread availability of 6 degree of freedom pose tracking using
 internal-measurement units (IMUs) allows continuous monitoring of an animal's
